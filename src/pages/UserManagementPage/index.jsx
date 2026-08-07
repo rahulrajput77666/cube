@@ -15,13 +15,12 @@ import {
   Select,
   TextField,
   Typography,
-  Rating,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import BusinessIcon from "@mui/icons-material/Business";
-import StarIcon from "@mui/icons-material/Star";
+// removed StarIcon/Rating to keep UI simple (numeric values only)
 import orgHierarchy from "../../mocks/mockOrgStructure";
 
 const roleStyles = {
@@ -163,6 +162,55 @@ function UserManagementPage() {
     () => orgHierarchy.map(filterNode).filter(Boolean),
     [searchTerm, filters]
   );
+
+  // Helpers to build a perspective view: show manager chain (ancestors)
+  // leading to the selected employee, and the selected employee's subtree (descendants).
+  const findPathToNode = (nodes, id) => {
+    let path = null;
+    const walk = (items, acc = []) => {
+      for (const item of items) {
+        const nextAcc = [...acc, item];
+        if (item.id === id) {
+          path = nextAcc;
+          return true;
+        }
+        if (item.children?.length && walk(item.children, nextAcc)) return true;
+      }
+      return false;
+    };
+    walk(nodes);
+    return path || [];
+  };
+
+  const perspectiveHierarchy = useMemo(() => {
+    const selectedId = selectedEmployee?.id;
+    if (!selectedId) return orgHierarchy.map((n) => ({ ...n }));
+
+    const path = findPathToNode(orgHierarchy, selectedId);
+    if (!path.length) return orgHierarchy.map((n) => ({ ...n }));
+
+    // Build trimmed tree: start from the top-most ancestor in path
+    const build = (idx) => {
+      const node = path[idx];
+      const isLast = idx === path.length - 1;
+      const branchChildId = !isLast ? path[idx + 1].id : null;
+      const cloned = { ...node };
+      if (isLast) {
+        // include full subtree under selected
+        cloned.children = node.children?.map((c) => ({ ...c })) || [];
+      } else {
+        // keep only the branch child that leads to selected
+        cloned.children = node.children
+          ? node.children
+              .filter((c) => c.id === branchChildId)
+              .map((c) => ({ ...build(idx + 1) }))
+          : [];
+      }
+      return cloned;
+    };
+
+    return [build(0)];
+  }, [selectedEmployee]);
 
   const renderTree = (nodes, level = 0) => {
     return nodes.map((node) => {
@@ -400,8 +448,8 @@ function UserManagementPage() {
                 </Typography>
               </Box>
             </Box>
-            {filteredHierarchy.length ? (
-              renderTree(filteredHierarchy)
+            {perspectiveHierarchy.length ? (
+              renderTree(perspectiveHierarchy)
             ) : (
               <Typography color="text.secondary">No matching records found for selected filters.</Typography>
             )}
@@ -470,22 +518,15 @@ function UserManagementPage() {
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
                 Annual Ratings
               </Typography>
-              {selectedDetails.reviewRatings?.map((rating) => (
-                <Box key={rating.year} sx={{ mb: 2, p: 2, bgcolor: "#F8FAFC", borderRadius: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography fontWeight={700}>{rating.year}</Typography>
-                    <Typography color="text.secondary">{rating.rating.toFixed(1)}</Typography>
+                {selectedDetails.reviewRatings?.map((rating) => (
+                  <Box key={rating.year} sx={{ mb: 2, p: 2, bgcolor: "#F8FAFC", borderRadius: 2 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography fontWeight={700}>{rating.year}</Typography>
+                      <Typography color="text.secondary">{rating.rating.toFixed(1)}</Typography>
+                    </Box>
+                    <Typography variant="body2">Summary: {rating.notes || "—"}</Typography>
                   </Box>
-                  <Rating
-                    name={`rating-${selectedDetails.id}-${rating.year}`}
-                    value={rating.rating}
-                    precision={0.1}
-                    readOnly
-                    size="small"
-                    emptyIcon={<StarIcon fontSize="inherit" />}
-                  />
-                </Box>
-              ))}
+                ))}
             </Box>
           </Card>
         </Grid>
@@ -493,7 +534,6 @@ function UserManagementPage() {
         <Grid item xs={12} lg={3}>
           <Card sx={{ p: 3, borderRadius: 3, boxShadow: "0 8px 24px rgba(15,23,42,0.06)" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-              <StarIcon sx={{ color: "#2563EB", fontSize: 32 }} />
               <Box>
                 <Typography variant="h6" fontWeight={700}>
                   Project Review History
@@ -509,7 +549,7 @@ function UserManagementPage() {
                   {project.duration}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Rating value={project.rating} precision={0.1} readOnly size="small" />
+                  <Typography color="text.secondary">Rating</Typography>
                   <Typography fontWeight={700}>{project.rating.toFixed(1)}</Typography>
                 </Box>
               </Box>

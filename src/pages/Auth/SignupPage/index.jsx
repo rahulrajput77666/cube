@@ -1,20 +1,8 @@
 import { useState } from "react";
-import {
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  FormControl,
-  Grid,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-  Link,
-} from "@mui/material";
+import {Avatar,Box,Button,Card,CardContent,FormControl,Grid,MenuItem,Select,TextField,Typography,Link,} from "@mui/material";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { useNavigate } from "react-router-dom";
+import PageBackgroundWrapper from "../../../components/PageBackgroundWrapper";
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -54,14 +42,15 @@ function SignupPage() {
   };
 
   return (
-    <Grid container sx={{ minHeight: 'calc(100vh - 96px)' }}>
-      <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 6 }}>
+    <PageBackgroundWrapper>
+      <Grid container sx={{ minHeight: '100vh' }}>
+        <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 6 }}>
         <Box sx={{ maxWidth: 520 }}>
           <Typography variant="h3" fontWeight={800} sx={{ color: '#0F172A' }}>
             Create Account
           </Typography>
           <Typography sx={{ mt: 2, color: '#667085' }}>
-            Create a role-based account for the PROFINCH ORACLE system.
+            Create a role-based account.
           </Typography>
         </Box>
       </Grid>
@@ -75,7 +64,7 @@ function SignupPage() {
               </Avatar>
               <Box>
                 <Typography variant="h6" fontWeight={700}>Create your account</Typography>
-                <Typography variant="body2" color="text.secondary">All fields are frontend-only and mock</Typography>
+              
               </Box>
             </Box>
 
@@ -106,6 +95,7 @@ function SignupPage() {
         </Card>
       </Grid>
     </Grid>
+    </PageBackgroundWrapper>
   );
 }
 

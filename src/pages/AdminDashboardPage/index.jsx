@@ -5,9 +5,7 @@ import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";
 import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/KnowledgePreviewDrawer";
-
 import mockKnowledge from "../../mocks/mockKnowledge";
-
 function AdminDashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);

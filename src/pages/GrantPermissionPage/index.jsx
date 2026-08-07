@@ -1,10 +1,13 @@
 import { Typography } from "@mui/material";
+import PageBackgroundWrapper from "../../components/PageBackgroundWrapper";
 
 function GrantPermissionPage() {
   return (
-    <Typography variant="h4">
-      Grant Permission Page
-    </Typography>
+    <PageBackgroundWrapper>
+      <Typography variant="h4">
+        Grant Permission Page
+      </Typography>
+    </PageBackgroundWrapper>
   );
 }
 

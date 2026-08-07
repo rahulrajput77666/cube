@@ -47,12 +47,12 @@ Header will receive user information.
 =========================================================
 */
 
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children, backgroundColor = "#F8FAFC" }) => {
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        backgroundColor: "#F8FAFC",
+        backgroundColor,
       }}
     >
       {/* =====================================================

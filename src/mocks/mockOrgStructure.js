@@ -637,4 +637,28 @@ const orgHierarchy = [
   },
 ];
 
+// Add brief notes to each review rating for UI summary (keeps mock data tidy)
+const enrichRatingsWithNotes = (nodes) => {
+  const walk = (items) => {
+    items.forEach((item) => {
+      if (item.reviewRatings?.length) {
+        item.reviewRatings = item.reviewRatings.map((r) => ({
+          ...r,
+          notes:
+            r.notes ||
+            (r.year >= 2025
+              ? "Exceeded targets"
+              : r.year === 2024
+              ? "Met expectations"
+              : "Solid contributions"),
+        }));
+      }
+      if (item.children?.length) walk(item.children);
+    });
+  };
+  walk(nodes);
+};
+
+enrichRatingsWithNotes(orgHierarchy);
+
 export default orgHierarchy;
