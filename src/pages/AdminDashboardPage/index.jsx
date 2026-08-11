@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
-import { Box, Button, Typography, Pagination } from "@mui/material";
+import { Box,Button,Typography,Pagination } from "@mui/material";
 import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";

@@ -1,0 +1,15 @@
+export const MODULES = {
+  SMS: "SMS",
+  DMS: "DMS",
+  PROJECT_PLANNING:
+    "PROJECT_PLANNING",
+  ISSUE_TRACKING:
+    "ISSUE_TRACKING",
+  REVIEW: "REVIEW",
+  USERS: "USERS"
+};
+export const GROUPS = {
+  ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+  EMPLOYEE: "EMPLOYEE"
+};

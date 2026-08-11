@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {Box,Button,Typography,Pagination,} from "@mui/material";
 import MainLayout from "../../layouts/MainLayout";
 import SearchBar from "../../components/SearchBar/SearchBar";
@@ -8,6 +9,9 @@ import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/Know
 import mockKnowledge from "../../mocks/mockKnowledge";
 
 function SearchPage() {
+  const navigate = useNavigate();
+  
+
   const [searchTerm, setSearchTerm] =
     useState("");
 
@@ -124,6 +128,12 @@ function SearchPage() {
     setPage(1);
   };
 
+ const handleRequestAccess = () => {
+  navigate(
+    "/employee-upload"
+  );
+};
+
   return (
     <MainLayout>
       <Box
@@ -164,14 +174,28 @@ function SearchPage() {
               knowledge documents from
               the repository.
             </Typography>
+
+            <Typography
+              sx={{
+                mt: 1,
+                color: "#475569",
+              }}
+            >
+            
+            </Typography>
           </Box>
 
-          <Button
-            variant="contained"
-            size="large"
-          >
-            Requests
-          </Button>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleRequestAccess}
+            >
+              Upload Solution
+            </Button>
+
+            
+          </Box>
         </Box>
 
         {/* Search */}

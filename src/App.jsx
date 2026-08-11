@@ -1,9 +1,4 @@
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-} from "react-router-dom";
-
+import {BrowserRouter,Routes,Route,} from "react-router-dom";
 import SearchPage from "./pages/SearchPage";
 import UploadPage from "./pages/UploadPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -17,6 +12,7 @@ import SmsPage from "./pages/SmsPage";
 import ProjectPlanningPage from "./pages/ProjectPlanningPage";
 import IssueTrackingPage from "./pages/IssueTrackingPage";
 import ReviewPage from "./pages/ReviewPage";
+import EmployeeUploadPage from "./pages/EmployeeUploadPage";
 
 function App() {
   return (
@@ -65,6 +61,10 @@ function App() {
             </AdminLayout>
           }
         />
+        <Route
+  path="/employee-upload"
+  element={<EmployeeUploadPage />}
+/>
       </Routes>
     </BrowserRouter>
   );

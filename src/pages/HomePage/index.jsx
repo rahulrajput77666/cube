@@ -146,7 +146,7 @@ const HomePage = () => {
             Welcome to CUBE
           </Typography>
           <Typography sx={{ color: "#667085" }}>
-            Open the menu to select a module. Click DMS to go to the admin dashboard.
+            Open the menu to select a module.
           </Typography>
         </Box>
 
@@ -158,9 +158,7 @@ const HomePage = () => {
             boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
-          <Typography sx={{ color: "#667085" }}>
-            This is the home page. Use the menu icon to open the modules drawer.
-          </Typography>
+          
         </Box>
       </Box>
     </Box>
