@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {Box,Tabs,Tab,Card,Typography,Chip,Stack,Button,Divider,TextField,Paper,IconButton,} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -7,28 +7,85 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import mockReviewRequests from "../../mocks/mockReviewRequests";
+import {
+  addApprovedEmployeeSubmission,
+  loadPermissionRequests,
+  savePermissionRequests,
+} from "../../utils/permissionStorage";
+
+const normalizeStatus = (value) => String(value || "").toUpperCase();
+const getSafeKeys = (item) => (Array.isArray(item?.keys) ? item.keys : []);
+const getSafeAttachments = (item) =>
+  Array.isArray(item?.attachments) ? item.attachments : [];
 
 function GrantPermissionPage() {
   const [tab, setTab] = useState(0);
-  const [editingDescription, setEditingDescription] =
-  useState(null);
-  const [editingKeys, setEditingKeys] =
-  useState(null);
+  const [editingDescription, setEditingDescription] = useState(null);
+  const [editingKeys, setEditingKeys] = useState(null);
 
-  const [requests, setRequests] =
-    useState(mockReviewRequests);
+  const [requests, setRequests] = useState(() => {
+    const stored = loadPermissionRequests();
+    const base = stored && stored.length > 0 ? stored : mockReviewRequests;
+    return base.map((item) => ({
+      ...item,
+      keys: getSafeKeys(item),
+      attachments: getSafeAttachments(item),
+      description: item?.description || item?.summary || "",
+      status: normalizeStatus(item.status),
+    }));
+  });
+
+  useEffect(() => {
+    const pendingModifyDocument = localStorage.getItem("pendingModifyDocument");
+
+    if (!pendingModifyDocument) {
+      savePermissionRequests(requests);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(pendingModifyDocument);
+      const hasMatch = requests.some((item) => item.id === parsed?.id);
+
+      if (parsed && !hasMatch) {
+        const normalizedItem = {
+          ...parsed,
+          keys: getSafeKeys(parsed),
+          attachments: getSafeAttachments(parsed),
+          status: normalizeStatus(parsed.status || "APPROVED"),
+        };
+
+        setRequests((prev) => [normalizedItem, ...prev]);
+      }
+
+      setTab(1);
+      localStorage.removeItem("pendingModifyDocument");
+    } catch (error) {
+      // ignore invalid JSON
+    }
+
+    savePermissionRequests(requests);
+  }, [requests]);
 
   const handleApprove = (id) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: "APPROVED",
-            }
-          : item
-      )
+    const selected = requests.find((item) => item.id === id);
+
+    if (!selected) return;
+
+    const updatedRequests = requests.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            status: "APPROVED",
+          }
+        : item
     );
+
+    setRequests(updatedRequests);
+    addApprovedEmployeeSubmission({
+      ...selected,
+      status: "APPROVED",
+    });
   };
 
   const handleReject = (id) => {
@@ -44,16 +101,16 @@ function GrantPermissionPage() {
     );
   };
 
-  const filteredData = requests.filter(
-    (item) => {
-      if (tab === 0)
-        return item.status === "PENDING";
+  const filteredData = useMemo(
+    () =>
+      requests.filter((item) => {
+        const status = normalizeStatus(item.status);
 
-      if (tab === 1)
-        return item.status === "APPROVED";
-
-      return item.status === "REJECTED";
-    }
+        if (tab === 0) return status === "PENDING";
+        if (tab === 1) return status === "APPROVED";
+        return status === "REJECTED";
+      }),
+    [requests, tab]
   );
 
   return (
@@ -167,12 +224,12 @@ function GrantPermissionPage() {
               </Box>
 
               <Chip
-                label={item.status}
+                label={normalizeStatus(item.status)}
                 color={
-                  item.status ===
+                  normalizeStatus(item.status) ===
                   "APPROVED"
                     ? "success"
-                    : item.status ===
+                    : normalizeStatus(item.status) ===
                       "REJECTED"
                     ? "error"
                     : "warning"
@@ -223,7 +280,7 @@ function GrantPermissionPage() {
   {editingKeys === item.id ? (
     <TextField
       fullWidth
-      value={item.keys.join(", ")}
+      value={getSafeKeys(item).join(", ")}
       onChange={(e) => {
         const updated =
           requests.map((request) =>
@@ -233,9 +290,8 @@ function GrantPermissionPage() {
                   keys:
                     e.target.value
                       .split(",")
-                      .map((key) =>
-                        key.trim()
-                      ),
+                      .map((key) => key.trim())
+                      .filter(Boolean),
                 }
               : request
           );
@@ -249,7 +305,7 @@ function GrantPermissionPage() {
       spacing={1}
       flexWrap="wrap"
     >
-      {item.keys.map((key) => (
+      {getSafeKeys(item).map((key) => (
         <Chip
           key={key}
           label={key}
@@ -333,73 +389,77 @@ function GrantPermissionPage() {
             </Typography>
 
             <Stack spacing={2}>
-              {item.attachments.map(
-                (file) => (
-                  <Paper
-                    key={file.id}
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      display: "flex",
-                      justifyContent:
-                        "space-between",
-                      alignItems:
-                        "center",
-                    }}
-                  >
-                    <Box>
-                      <Typography
-                        fontWeight={600}
-                      >
-                        {file.name}
-                      </Typography>
+              {getSafeAttachments(item).map((file) => (
+                <Paper
+                  key={file.id || `${file.name}-${file.size}`}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Box>
+                    <Typography fontWeight={600}>{file.name}</Typography>
 
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {file.size}
-                      </Typography>
-                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {file.size}
+                    </Typography>
+                  </Box>
 
-                    <Stack
-                      direction="row"
-                      spacing={1}
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      startIcon={<VisibilityIcon />}
+                      onClick={() => {
+                        const fileUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl;
+                        if (fileUrl) {
+                          window.open(fileUrl, "_blank", "noopener,noreferrer");
+                          return;
+                        }
+
+                        alert("No preview available for this file.");
+                      }}
                     >
-                      <Button
-                        startIcon={
-                          <VisibilityIcon />
-                        }
-                      >
-                        Preview
-                      </Button>
+                      Preview
+                    </Button>
 
-                      <Button
-                        startIcon={
-                          <DownloadIcon />
-                        }
-                      >
-                        Download
-                      </Button>
+                    <Button
+                      startIcon={<DownloadIcon />}
+                      onClick={() => {
+                        const href = file?.fileUrl || file?.downloadUrl || file?.previewUrl || "";
 
-                      <Button
-                        color="error"
-                        startIcon={
-                          <DeleteIcon />
+                        if (!href) {
+                          alert("No downloadable file is available for this attachment.");
+                          return;
                         }
-                      >
-                        Delete
-                      </Button>
-                    </Stack>
-                  </Paper>
-                )
-              )}
+
+                        const link = document.createElement("a");
+                        link.href = href;
+                        link.download = file.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    >
+                      Download
+                    </Button>
+
+                    <Button
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={() => alert("Only the manager who uploaded or approved this document can delete it.")}
+                    >
+                      Delete
+                    </Button>
+                  </Stack>
+                </Paper>
+              ))}
             </Stack>
 
             {/* Actions */}
 
-            {item.status ===
-              "PENDING" && (
+            {normalizeStatus(item.status) === "PENDING" && (
               <Box
                 sx={{
                   mt: 4,

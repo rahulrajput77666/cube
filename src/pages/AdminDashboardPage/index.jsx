@@ -5,7 +5,7 @@ import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";
 import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/KnowledgePreviewDrawer";
-import mockKnowledge from "../../mocks/mockKnowledge";
+import { loadRepositoryItems } from "../../utils/permissionStorage";
 function AdminDashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -15,8 +15,9 @@ function AdminDashboardPage() {
   const [page, setPage] = useState(1);
 
   const pageSize = 10;
+  const repositoryItems = loadRepositoryItems();
 
-  const filteredKnowledge = mockKnowledge.filter((item) => {
+  const filteredKnowledge = repositoryItems.filter((item) => {
     const search = searchTerm.toLowerCase();
 
     return (
@@ -37,7 +38,7 @@ function AdminDashboardPage() {
       return;
     }
 
-    const matches = mockKnowledge.filter((item) =>
+    const matches = repositoryItems.filter((item) =>
       [item.title, item.description, item.chip1, item.chip2, item.chip3, item.chip4]
         .join(" ")
         .toLowerCase()

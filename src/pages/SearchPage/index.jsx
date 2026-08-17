@@ -6,7 +6,7 @@ import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";
 import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/KnowledgePreviewDrawer";
-import mockKnowledge from "../../mocks/mockKnowledge";
+import { loadRepositoryItems } from "../../utils/permissionStorage";
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -30,9 +30,10 @@ function SearchPage() {
   const [page, setPage] = useState(1);
 
   const pageSize = 10;
+  const repositoryItems = loadRepositoryItems();
 
   const filteredKnowledge =
-    mockKnowledge.filter((item) => {
+    repositoryItems.filter((item) => {
       const search = searchTerm.toLowerCase();
 
       return (
@@ -66,7 +67,7 @@ function SearchPage() {
     }
 
     const matches =
-      mockKnowledge.filter((item) =>
+      repositoryItems.filter((item) =>
         [
           item.title,
           item.description,

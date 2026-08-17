@@ -1,45 +1,109 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {AppBar,Box,Button,Divider,Drawer,IconButton,List,ListItemButton,ListItemIcon,ListItemText,Toolbar,Typography,} from "@mui/material";
+import {
+  AppBar,
+  Avatar,
+  Box,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Typography,
+} from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import SmsOutlinedIcon from "@mui/icons-material/SmsOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 
-const menuItems = [
-  {
-    label: "SMS",
-    icon: <SmsOutlinedIcon />,
-    path: "/sms",
-  },
-  {
-    label: "DMS",
-    icon: <FolderOutlinedIcon />,
-    path: "/admin",
-  },
-  {
-    label: "Project Planning",
-    icon: <CalendarMonthOutlinedIcon />,
-    path: "/project-planning",
-  },
-  {
-    label: "Issue Tracking",
-    icon: <BugReportOutlinedIcon />,
-    path: "/issue-tracking",
-  },
-  {
-    label: "Review",
-    icon: <RateReviewOutlinedIcon />,
-    path: "/review",
-  },
-];
+const getDisplayUser = (username, role) => {
+  const normalizedRole = String(role || "EMPLOYEE").toUpperCase();
+  const cleanUsername = String(username || "user")
+    .replace(/[._-]+/g, " ")
+    .trim();
+
+  const words = cleanUsername.split(/\s+/).filter(Boolean);
+  const roleWords = ["admin", "manager", "employee", "user"];
+  const filteredWords = words.filter(
+    (word) => !roleWords.includes(String(word).toLowerCase())
+  );
+
+  const displayName =
+    filteredWords.length > 0
+      ? filteredWords
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          )
+          .join(" ")
+      : "User";
+
+  const userRole =
+    normalizedRole === "ADMIN"
+      ? "Admin"
+      : normalizedRole === "MANAGER"
+        ? "Manager"
+        : "Employee";
+
+  return { name: displayName, role: userRole };
+};
 
 const HomePage = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const role =
+    (typeof window !== "undefined" &&
+      (localStorage.getItem("userRole") || localStorage.getItem("role"))) ||
+    "EMPLOYEE";
+
+  const username =
+    (typeof window !== "undefined" && localStorage.getItem("username")) || "User";
+
+  const user = getDisplayUser(username, role);
+  const initials = user.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "U";
+
+  const dmsPath = role.toUpperCase() === "MANAGER" ? "/admin" : "/search";
+
+  const menuItems = [
+    {
+      label: "SMS",
+      icon: <SmsOutlinedIcon />,
+      path: "/sms",
+    },
+    {
+      label: "DMS",
+      icon: <FolderOutlinedIcon />,
+      path: dmsPath,
+    },
+    {
+      label: "Project Planning",
+      icon: <CalendarMonthOutlinedIcon />,
+      path: "/project-planning",
+    },
+    {
+      label: "Issue Tracking",
+      icon: <BugReportOutlinedIcon />,
+      path: "/issue-tracking",
+    },
+    {
+      label: "Review",
+      icon: <RateReviewOutlinedIcon />,
+      path: "/review",
+    },
+  ];
 
   const handleMenuClick = (path) => {
     setDrawerOpen(false);
@@ -81,7 +145,47 @@ const HomePage = () => {
             </Box>
           </Box>
 
-          <Button variant="contained">Notifications</Button>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              backgroundColor: "#F8FAFC",
+              borderRadius: 4,
+              px: 2,
+              py: 1,
+            }}
+          >
+            <Box sx={{ textAlign: "right" }}>
+              <Typography variant="caption" sx={{ color: "#6B7280", display: "block" }}>
+                {user.role}
+              </Typography>
+              <Typography variant="body1" fontWeight={700} color="#111827">
+                {user.name}
+              </Typography>
+            </Box>
+
+            <Avatar
+              sx={{
+                width: 40,
+                height: 40,
+                fontWeight: 700,
+                bgcolor: "#2563EB",
+              }}
+            >
+              {initials}
+            </Avatar>
+
+            <IconButton
+              color="primary"
+              sx={{
+                border: "1px solid #E5E7EB",
+                bgcolor: "#FFFFFF",
+              }}
+            >
+              <NotificationsNoneOutlinedIcon />
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
 

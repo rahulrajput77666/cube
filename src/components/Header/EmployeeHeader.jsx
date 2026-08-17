@@ -1,6 +1,13 @@
 import { AppBar, Toolbar, Typography, Avatar, Box } from "@mui/material";
 
-const Header = () => {
+const Header = ({ user = { name: "User", role: "Employee" } }) => {
+  const initials = user.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "U";
+
   return (
     <AppBar
       position="fixed"
@@ -33,7 +40,7 @@ const Header = () => {
               CUBE
             </Typography>
             <Typography variant="body2" sx={{ color: "#6B7280" }}>
-              Knowledge repository
+              {user.role} portal
             </Typography>
           </Box>
         </Box>
@@ -49,14 +56,20 @@ const Header = () => {
             py: 1,
           }}
         >
-          <Typography
-            sx={{
-              fontWeight: 600,
-              color: "#374151",
-            }}
-          >
-            Rahul Singh
-          </Typography>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              {user.name}
+            </Typography>
+            <Typography variant="caption" sx={{ color: "#6B7280" }}>
+              {user.role}
+            </Typography>
+          </Box>
 
           <Avatar
             sx={{
@@ -67,7 +80,7 @@ const Header = () => {
               bgcolor: "#2563EB",
             }}
           >
-            RS
+            {initials}
           </Avatar>
         </Box>
       </Toolbar>

@@ -3,10 +3,10 @@ import { Navigate } from "react-router-dom";
 const RoleBasedHome = () => {
   const raw =
     (typeof window !== "undefined" &&
-      localStorage.getItem("userRole")) ||
+      (localStorage.getItem("userRole") || localStorage.getItem("role"))) ||
     "EMPLOYEE";
 
-  const role = raw.toUpperCase();
+  const role = String(raw).toUpperCase();
 
   if (role === "ADMIN" || role === "MANAGER") {
     return <Navigate to="/admin" replace />;

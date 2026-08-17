@@ -3,6 +3,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { downloadAttachment } from "../../api/knowledgeApi";
 
 /*
 =========================================================
@@ -130,15 +131,35 @@ function KnowledgePreviewDrawer({
 
   ===================================================== */
 
-  const handleOpenFile = (file) => {
-    console.log("Open File:", file.name);
+  const handleOpenFile = async (file) => {
+    const attachmentId = file?.attachmentId || file?.id;
 
-    if (file.previewUrl) {
-      window.open(
-        file.previewUrl,
-        "_blank"
-      );
+    if (attachmentId) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.19:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
+        );
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          window.open(objectUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+      } catch (error) {
+        console.error("Preview failed:", error);
+      }
     }
+
+    const fallbackUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl;
+
+    if (fallbackUrl) {
+      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    alert("This attachment is not available for preview from the backend yet.");
   };
 
   /* =====================================================
@@ -163,23 +184,31 @@ function KnowledgePreviewDrawer({
 
   ===================================================== */
 
-  const handleDownloadFile = (file) => {
-    console.log(
-      "Download File:",
-      file.name
-    );
+  const handleDownloadFile = async (file) => {
+    const attachmentId = file?.attachmentId || file?.id;
 
-    if (file.fileUrl) {
-      const link =
-        document.createElement("a");
+    if (attachmentId) {
+      try {
+        await downloadAttachment(attachmentId, file?.fileName || file?.name || "attachment");
+        return;
+      } catch (error) {
+        console.error("Authenticated download failed:", error);
+      }
+    }
 
-      link.href = file.fileUrl;
+    const href = file?.fileUrl || file?.downloadUrl || "";
+
+    if (href) {
+      const link = document.createElement("a");
+      link.href = href;
       link.download = file.name;
-
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      return;
     }
+
+    alert("No downloadable attachment is available for this file.");
   };
 
   return (
@@ -317,16 +346,13 @@ function KnowledgePreviewDrawer({
           mb={2}
         >
           Attachments (
-          {
-            selectedDocument
-              .attachments.length
-          }
+          {Array.isArray(selectedDocument?.attachments) ? selectedDocument.attachments.length : 0}
           )
         </Typography>
 
         <Divider />
 
-        {selectedDocument.attachments.map(
+        {(Array.isArray(selectedDocument?.attachments) ? selectedDocument.attachments : []).map(
           (file) => (
             <Box
               key={file.id}

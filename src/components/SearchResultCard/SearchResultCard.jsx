@@ -1,12 +1,16 @@
 import {Box,Card,Typography,Chip,Button,Divider,Menu,MenuItem,} from "@mui/material";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DownloadIcon from "@mui/icons-material/Download";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { downloadAttachment } from "../../api/knowledgeApi";
 
 function SearchResultCard({ item, onPreview }) {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
-  
+  const isManager = (localStorage.getItem("role") || "").toUpperCase() === "MANAGER";
+
   const handleMenuOpen = (event) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
@@ -17,27 +21,83 @@ function SearchResultCard({ item, onPreview }) {
     setAnchorEl(null);
   };
 
-  const handleDownloadFile = (file) => {
-    if (file.fileUrl) {
+  const handleOpenFile = async (file) => {
+    const attachmentId = file?.attachmentId || file?.id;
+
+    if (attachmentId) {
+      try {
+        const blob = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.19:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
+        ).then((response) => response.blob());
+
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank", "noopener,noreferrer");
+        return;
+      } catch (error) {
+        console.error("Preview failed:", error);
+      }
+    }
+
+    const fallbackUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl;
+
+    if (fallbackUrl) {
+      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    alert("This attachment is not available for preview from the backend yet.");
+  };
+
+  const handleDownloadFile = async (file) => {
+    const attachmentId = file?.attachmentId || file?.id;
+
+    if (attachmentId) {
+      try {
+        await downloadAttachment(attachmentId, file?.fileName || file?.name || item?.title || "attachment");
+        handleMenuClose();
+        return;
+      } catch (error) {
+        console.error("Authenticated download failed:", error);
+      }
+    }
+
+    const href = file?.fileUrl || file?.downloadUrl || "";
+
+    if (href) {
       const link = document.createElement("a");
-
-      link.href = file.fileUrl;
+      link.href = href;
       link.download = file.name;
-
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      handleMenuClose();
+      return;
     }
 
+    alert("No downloadable attachment is available for this file.");
     handleMenuClose();
   };
 
   const handleModify = () => {
-    console.log("Modify:", item.id);
+    if (!isManager) {
+      alert("Only manager can able to modify");
+      handleMenuClose();
+      return;
+    }
+
+    localStorage.setItem("pendingModifyDocument", JSON.stringify(item));
+    navigate("/grant-permission");
     handleMenuClose();
   };
 
   const handleDelete = () => {
+    if (!isManager) {
+      alert("Only manager can delete this document.");
+      handleMenuClose();
+      return;
+    }
+
     console.log("Delete:", item.id);
     handleMenuClose();
   };
@@ -141,9 +201,9 @@ function SearchResultCard({ item, onPreview }) {
 
           <Divider />
 
-          {item.attachments.map((file) => (
+          {(Array.isArray(item.attachments) ? item.attachments : []).map((file) => (
             <Box
-              key={file.id}
+              key={file.id || `${file.name}-${file.size}`}
               sx={{
                 mt: 2,
                 display: "flex",
@@ -194,7 +254,10 @@ function SearchResultCard({ item, onPreview }) {
             <MenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                handleDownloadFile(item.attachments[0]);
+                const firstAttachment = Array.isArray(item.attachments) ? item.attachments[0] : null;
+                if (firstAttachment) {
+                  handleDownloadFile(firstAttachment);
+                }
               }}
             >
               Download
@@ -229,18 +292,30 @@ function SearchResultCard({ item, onPreview }) {
             onClick={(e) => {
               e.stopPropagation();
 
-              item.attachments.forEach((file) => {
-                if (file.fileUrl) {
-                  const link =
-                    document.createElement("a");
-
-                  link.href = file.fileUrl;
-                  link.download = file.name;
-
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+              (Array.isArray(item.attachments) ? item.attachments : []).forEach(async (file) => {
+                const attachmentId = file?.attachmentId || file?.id;
+                if (attachmentId) {
+                  try {
+                    await downloadAttachment(attachmentId, file?.fileName || file?.name || "attachment");
+                  } catch (error) {
+                    console.error("Download all failed:", error);
+                  }
+                  return;
                 }
+
+                const href = file?.fileUrl || file?.downloadUrl || file?.previewUrl || "";
+
+                if (!href) {
+                  return;
+                }
+
+                const link = document.createElement("a");
+                link.href = href;
+                link.download = file.name;
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
               });
             }}
           >

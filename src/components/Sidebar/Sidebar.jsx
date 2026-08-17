@@ -8,19 +8,26 @@ import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const menuItems = [
-  { label: "SMS", icon: <SmsOutlinedIcon />, path: "/sms" },
-  { label: "DMS", icon: <FolderOutlinedIcon />, path: "/dms" },
-  { label: "Project Planning", icon: <CalendarMonthOutlinedIcon />, path: "/project-planning" },
-  { label: "Issue Tracking", icon: <BugReportOutlinedIcon />, path: "/issue-tracking" },
-  { label: "Review", icon: <RateReviewOutlinedIcon />, path: "/review" },
-  { label: "Knowledge Repository", icon: <MenuBookOutlinedIcon />, path: "/search" },
-];
-
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activePath, setActivePath] = useState(location.pathname);
+
+  const role =
+    (typeof window !== "undefined" &&
+      (localStorage.getItem("userRole") || localStorage.getItem("role"))) ||
+    "EMPLOYEE";
+
+  const dmsPath = role.toUpperCase() === "MANAGER" ? "/admin" : "/search";
+
+  const menuItems = [
+    { label: "SMS", icon: <SmsOutlinedIcon />, path: "/sms" },
+    { label: "DMS", icon: <FolderOutlinedIcon />, path: dmsPath },
+    { label: "Project Planning", icon: <CalendarMonthOutlinedIcon />, path: "/project-planning" },
+    { label: "Issue Tracking", icon: <BugReportOutlinedIcon />, path: "/issue-tracking" },
+    { label: "Review", icon: <RateReviewOutlinedIcon />, path: "/review" },
+    { label: "Knowledge Repository", icon: <MenuBookOutlinedIcon />, path: "/search" },
+  ];
 
   const handleNavigation = (path) => {
     setActivePath(path);

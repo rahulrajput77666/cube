@@ -1,10 +1,57 @@
 ﻿import { AppBar, Toolbar, Button, Box, Typography, Avatar } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 
-function AdminHeader() {
+const getDisplayUser = (username, role) => {
+  const normalizedRole = String(role || "MANAGER").toUpperCase();
+  const cleanUsername = String(username || "user")
+    .replace(/[._-]+/g, " ")
+    .trim();
+
+  const words = cleanUsername.split(/\s+/).filter(Boolean);
+  const roleWords = ["admin", "manager", "employee", "user"];
+  const filteredWords = words.filter(
+    (word) => !roleWords.includes(String(word).toLowerCase())
+  );
+
+  const displayName =
+    filteredWords.length > 0
+      ? filteredWords
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          )
+          .join(" ")
+      : "User";
+
+  const userRole =
+    normalizedRole === "ADMIN"
+      ? "Admin"
+      : normalizedRole === "MANAGER"
+        ? "Manager"
+        : "Employee";
+
+  return { name: displayName, role: userRole };
+};
+
+function AdminHeader({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+  const storedUsername =
+    (typeof window !== "undefined" && localStorage.getItem("username")) ||
+    "User";
+  const storedRole =
+    (typeof window !== "undefined" && localStorage.getItem("role")) ||
+    "MANAGER";
+
+  const resolvedUser = user || getDisplayUser(storedUsername, storedRole);
+
+  const initials = resolvedUser.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "U";
 
   const navButtonStyles = (path) => ({
     color: currentPath === path ? "#1D4ED8" : "#4B5563",
@@ -50,7 +97,7 @@ function AdminHeader() {
               CUBE
             </Typography>
             <Typography variant="body2" sx={{ color: "#6B7280" }}>
-              Admin portal
+              {user.role} portal
             </Typography>
           </Box>
         </Box>
@@ -83,13 +130,13 @@ function AdminHeader() {
             py: 1,
           }}
         >
-          <Avatar sx={{ bgcolor: "#2563EB", width: 40, height: 40, fontWeight: 700 }}>AS</Avatar>
+          <Avatar sx={{ bgcolor: "#2563EB", width: 40, height: 40, fontWeight: 700 }}>{initials}</Avatar>
           <Box>
             <Typography variant="body1" fontWeight={700} color="#111827">
-              Rahul Singh
+              {resolvedUser.name}
             </Typography>
             <Typography variant="caption" sx={{ color: "#6B7280" }}>
-              Administrator
+              {resolvedUser.role}
             </Typography>
           </Box>
         </Box>
