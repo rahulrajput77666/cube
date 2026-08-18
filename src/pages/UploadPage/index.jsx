@@ -17,11 +17,13 @@ import {
 
 function UploadPage({ reviewMode = false }) {
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
+  const role = (localStorage.getItem("role") || "").toUpperCase();
   const username = localStorage.getItem("username") || "Unknown User";
   const isEmployee = role === "EMPLOYEE";
+  const isManagerOrAdmin = role === "MANAGER" || role === "ADMIN";
+  const shouldRequireApproval = !isManagerOrAdmin && reviewMode;
 
-  const [keys, setKeys] = useState(["oracle", "weblogic", "flexcube", "hooks"]);
+  const [keys, setKeys] = useState([]);
   const [keyInput, setKeyInput] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -96,6 +98,12 @@ function UploadPage({ reviewMode = false }) {
         ...new Set(keys.filter(Boolean).map((key) => String(key).trim()).filter(Boolean)),
       ];
 
+      if (!normalizedKeys.length) {
+        alert("Please add at least one key before submitting the solution.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
@@ -130,11 +138,43 @@ function UploadPage({ reviewMode = false }) {
         chip2: normalizedKeys[1] || "repository",
         chip3: normalizedKeys[2] || "document",
         chip4: normalizedKeys[3] || "solution",
+        keywords: normalizedKeys,
+        keys: normalizedKeys,
       });
 
-      if (reviewMode) {
+      const finalAttachments =
+        uploadedAttachments.length > 0
+          ? uploadedAttachments.map((file, index) => ({
+              id: file.attachmentId || file.id || `${knowledgeId}-${index}`,
+              attachmentId: file.attachmentId || file.id || null,
+              name: file.fileName || file.name || `attachment-${index + 1}`,
+              fileName: file.fileName || file.name || `attachment-${index + 1}`,
+              size: file.fileSize || file.size || "0 KB",
+              fileSize: file.fileSize || file.size || "0 KB",
+            }))
+          : files.map((fileEntry, index) => ({
+              id: `${fileEntry.id || index}-${Date.now()}`,
+              attachmentId: null,
+              name: fileEntry.name,
+              fileName: fileEntry.name,
+              size: fileEntry.size
+                ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB`
+                : "0 KB",
+              fileSize: fileEntry.size || 0,
+            }));
+
+      mappedItem.attachments = finalAttachments;
+      mappedItem.keywords = normalizedKeys;
+      mappedItem.keys = normalizedKeys;
+      mappedItem.tags = normalizedKeys;
+      mappedItem.chip1 = normalizedKeys[0] || "";
+      mappedItem.chip2 = normalizedKeys[1] || "";
+      mappedItem.chip3 = normalizedKeys[2] || "";
+      mappedItem.chip4 = normalizedKeys[3] || "";
+
+      if (shouldRequireApproval) {
         const request = {
-          id: `request-${knowledgeId || Date.now()}`,
+          id: `request-${knowledgeId || Date.now()}-${Math.random().toString(16).slice(2)}`,
           employeeName: username,
           submittedOn: new Date().toLocaleDateString("en-GB", {
             day: "2-digit",
@@ -145,21 +185,7 @@ function UploadPage({ reviewMode = false }) {
           title: title.trim(),
           keys: [...normalizedKeys],
           description: description.trim(),
-          attachments:
-            uploadedAttachments.length > 0
-              ? uploadedAttachments.map((file, index) => ({
-                  id: file.attachmentId || file.id || `${knowledgeId}-${index}`,
-                  name: file.fileName || file.name || `attachment-${index + 1}`,
-                  attachmentId: file.attachmentId || file.id || null,
-                  size: file.fileSize || file.size || "0 KB",
-                }))
-              : files.map((fileEntry, index) => ({
-                  id: `${fileEntry.id || index}-${Date.now()}`,
-                  name: fileEntry.name,
-                  size: fileEntry.size
-                    ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB`
-                    : "0 KB",
-                })),
+          attachments: finalAttachments,
         };
 
         appendPermissionRequest(request);
@@ -376,7 +402,11 @@ function UploadPage({ reviewMode = false }) {
 
               <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                 <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
-                  {isSubmitting ? "Submitting..." : reviewMode ? "Submit For Review" : "Submit"}
+                  {isSubmitting
+                    ? "Submitting..."
+                    : shouldRequireApproval
+                      ? "Submit For Review"
+                      : "Submit"}
                 </Button>
               </Box>
             </Stack>

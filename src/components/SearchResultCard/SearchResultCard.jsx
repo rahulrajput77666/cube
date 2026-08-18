@@ -22,7 +22,7 @@ function SearchResultCard({ item, onPreview }) {
   };
 
   const handleOpenFile = async (file) => {
-    const attachmentId = file?.attachmentId || file?.id;
+    const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
       try {
@@ -50,7 +50,7 @@ function SearchResultCard({ item, onPreview }) {
   };
 
   const handleDownloadFile = async (file) => {
-    const attachmentId = file?.attachmentId || file?.id;
+    const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
       try {
@@ -293,7 +293,7 @@ function SearchResultCard({ item, onPreview }) {
               e.stopPropagation();
 
               (Array.isArray(item.attachments) ? item.attachments : []).forEach(async (file) => {
-                const attachmentId = file?.attachmentId || file?.id;
+                const attachmentId = file?.attachmentId;
                 if (attachmentId) {
                   try {
                     await downloadAttachment(attachmentId, file?.fileName || file?.name || "attachment");

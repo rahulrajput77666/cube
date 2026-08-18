@@ -5,6 +5,20 @@ const normalizeStatus = (value) => String(value || "").toUpperCase();
 const normalizeList = (value) =>
   Array.isArray(value) ? value.filter(Boolean) : [];
 
+const mergeAttachments = (existing = [], next = []) => {
+  const byId = new Map();
+
+  [...existing, ...next].forEach((attachment) => {
+    const key = String(attachment?.attachmentId || attachment?.id || attachment?.fileName || attachment?.name || "");
+    if (!key) {
+      return;
+    }
+    byId.set(key, { ...(byId.get(key) || {}), ...attachment });
+  });
+
+  return [...byId.values()];
+};
+
 const normalizeAttachment = (file, index, fallbackTitle = "attachment") => {
   const attachmentId = file?.attachmentId ?? file?.id ?? file?.attachment_id ?? null;
   const name = file?.name || file?.fileName || file?.filename || `${fallbackTitle}-${index + 1}`;
@@ -75,10 +89,13 @@ const buildRepositoryItem = (item, source = "manager") => {
     date,
     downloads: Number(item?.downloads || item?.downloadCount || 0),
     attachments: normalized.attachments,
-    chip1: keys[0] || "knowledge",
-    chip2: keys[1] || "repository",
-    chip3: keys[2] || "shared",
-    chip4: keys[3] || "document",
+    keywords: keys,
+    keys,
+    tags: keys,
+    chip1: keys[0] || "",
+    chip2: keys[1] || "",
+    chip3: keys[2] || "",
+    chip4: keys[3] || "",
     source,
     status: normalizeStatus(item?.status),
   };
@@ -138,9 +155,27 @@ export const saveUploadedSolutions = (solutions) => {
 
 export const saveRepositoryItem = (item) => {
   const existing = loadUploadedSolutions() || [];
-  const next = [buildRepositoryItem(item, item?.source || "manager"), ...existing];
-  saveUploadedSolutions(next);
-  return next;
+  const incoming = buildRepositoryItem(item, item?.source || "manager");
+  const index = existing.findIndex((entry) => String(entry?.id) === String(incoming.id));
+
+  const merged =
+    index >= 0
+      ? existing.map((entry, idx) =>
+          idx === index
+            ? {
+                ...entry,
+                ...incoming,
+                attachments: mergeAttachments(entry?.attachments || [], incoming.attachments || []),
+                keys: [...new Set([...(entry?.keys || []), ...(incoming.keys || [])])],
+                keywords: [...new Set([...(entry?.keywords || []), ...(incoming.keywords || [])])],
+                tags: [...new Set([...(entry?.tags || []), ...(incoming.tags || [])])],
+              }
+            : entry
+        )
+      : [incoming, ...existing];
+
+  saveUploadedSolutions(merged);
+  return merged;
 };
 
 export const addApprovedEmployeeSubmission = (request) => {
@@ -168,5 +203,24 @@ export const loadRepositoryItems = () => {
     buildRepositoryItem({ ...item, status: "APPROVED" }, "employee_approved")
   );
 
-  return [...managerUploads, ...approvedUploads];
+  const merged = [...managerUploads, ...approvedUploads];
+  const deduped = merged.reduce((acc, item) => {
+    const existing = acc.findIndex((entry) => String(entry.id) === String(item.id));
+    if (existing >= 0) {
+      acc[existing] = {
+        ...acc[existing],
+        ...item,
+        attachments: mergeAttachments(acc[existing].attachments || [], item.attachments || []),
+        keys: [...new Set([...(acc[existing].keys || []), ...(item.keys || [])])],
+        keywords: [...new Set([...(acc[existing].keywords || []), ...(item.keywords || [])])],
+        tags: [...new Set([...(acc[existing].tags || []), ...(item.tags || [])])],
+      };
+      return acc;
+    }
+
+    acc.push(item);
+    return acc;
+  }, []);
+
+  return deduped;
 };

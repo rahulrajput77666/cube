@@ -132,7 +132,7 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleOpenFile = async (file) => {
-    const attachmentId = file?.attachmentId || file?.id;
+    const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
       try {
@@ -185,7 +185,7 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleDownloadFile = async (file) => {
-    const attachmentId = file?.attachmentId || file?.id;
+    const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
       try {
@@ -210,6 +210,16 @@ function KnowledgePreviewDrawer({
 
     alert("No downloadable attachment is available for this file.");
   };
+
+  const tags = (
+    Array.isArray(selectedDocument?.keywords)
+      ? selectedDocument.keywords
+      : Array.isArray(selectedDocument?.keys)
+        ? selectedDocument.keys
+        : Array.isArray(selectedDocument?.tags)
+          ? selectedDocument.tags
+          : []
+  ).filter(Boolean);
 
   return (
     <Drawer
@@ -516,21 +526,24 @@ function KnowledgePreviewDrawer({
             mb: 2,
           }}
         >
-          Tags
+          Keys
         </Typography>
 
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 1,
-          }}
-        >
-          <Chip label={selectedDocument.chip1} />
-          <Chip label={selectedDocument.chip2} />
-          <Chip label={selectedDocument.chip3} />
-          <Chip label={selectedDocument.chip4} />
-        </Box>
+        {tags.length > 0 ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            {tags.map((tag) => (
+              <Chip key={tag} label={tag} />
+            ))}
+          </Box>
+        ) : (
+          <Typography color="text.secondary">No keys available.</Typography>
+        )}
 
         {/* =====================================================
             METADATA

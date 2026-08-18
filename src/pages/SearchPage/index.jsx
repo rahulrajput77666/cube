@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {Box,Button,Typography,Pagination,} from "@mui/material";
 import MainLayout from "../../layouts/MainLayout";
@@ -6,6 +6,7 @@ import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";
 import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/KnowledgePreviewDrawer";
+import { getKnowledge, mapKnowledgeApiResponseToRepositoryItem } from "../../api/knowledgeApi";
 import { loadRepositoryItems } from "../../utils/permissionStorage";
 
 function SearchPage() {
@@ -28,9 +29,40 @@ function SearchPage() {
     useState(450);
 
   const [page, setPage] = useState(1);
+  const [repositoryItems, setRepositoryItems] = useState(() => loadRepositoryItems());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncRepository = async () => {
+      try {
+        const backendItems = await getKnowledge();
+        if (!isMounted) return;
+
+        const mappedItems = (Array.isArray(backendItems) ? backendItems : []).map((item) =>
+          mapKnowledgeApiResponseToRepositoryItem(item, {
+            source: "backend",
+          })
+        );
+
+        const fallbackItems = loadRepositoryItems();
+        const mergedItems = [...mappedItems, ...fallbackItems.filter((localItem) => !mappedItems.some((apiItem) => apiItem.id === localItem.id))];
+        setRepositoryItems(mergedItems);
+      } catch (error) {
+        if (isMounted) {
+          setRepositoryItems(loadRepositoryItems());
+        }
+      }
+    };
+
+    syncRepository();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const pageSize = 10;
-  const repositoryItems = loadRepositoryItems();
 
   const filteredKnowledge =
     repositoryItems.filter((item) => {
