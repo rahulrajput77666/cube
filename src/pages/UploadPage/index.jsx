@@ -190,7 +190,11 @@ function UploadPage({ reviewMode = false }) {
 
         appendPermissionRequest(request);
         alert("Solution submitted for manager review successfully.");
-        navigate("/grant-permission");
+        setTitle("");
+        setDescription("");
+        setKeyInput("");
+        setFiles([]);
+        setKeys([]);
       } else {
         saveRepositoryItem(mappedItem);
         alert("Solution published successfully.");

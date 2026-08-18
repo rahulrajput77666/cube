@@ -6,10 +6,10 @@ import DownloadIcon from "@mui/icons-material/Download";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { downloadAttachment } from "../../api/knowledgeApi";
 
-function SearchResultCard({ item, onPreview }) {
+function SearchResultCard({ item, onPreview, onDelete }) {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
-  const isManager = (localStorage.getItem("role") || "").toUpperCase() === "MANAGER";
+  const isManager = ["MANAGER", "ADMIN"].includes((localStorage.getItem("role") || "").toUpperCase());
 
   const handleMenuOpen = (event) => {
     event.stopPropagation();
@@ -20,6 +20,8 @@ function SearchResultCard({ item, onPreview }) {
     event?.stopPropagation();
     setAnchorEl(null);
   };
+
+  const attachments = Array.isArray(item?.attachments) ? item.attachments : [];
 
   const handleOpenFile = async (file) => {
     const attachmentId = file?.attachmentId;
@@ -92,15 +94,15 @@ function SearchResultCard({ item, onPreview }) {
   };
 
   const handleDelete = () => {
-    if (!isManager) {
-      alert("Only manager can delete this document.");
-      handleMenuClose();
-      return;
-    }
-
-    console.log("Delete:", item.id);
+  if (!isManager) {
+    alert("You don't have access");
     handleMenuClose();
-  };
+    return;
+  }
+
+  alert("Delete isn't connected to the backend yet — this will be enabled once the delete endpoint is available.");
+  handleMenuClose();
+};
 
   return (
     <Card
@@ -140,7 +142,7 @@ function SearchResultCard({ item, onPreview }) {
               }}
             />
 
-            <Box>
+            <Box sx={{ flex: 1 }}>
               <Typography
                 variant="h5"
                 fontWeight={700}
@@ -148,14 +150,41 @@ function SearchResultCard({ item, onPreview }) {
                 {item.title}
               </Typography>
 
-              <Typography
+              <Box
                 sx={{
-                  mt: 1,
-                  color: "#667085",
+                  mt: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
                 }}
               >
-                {item.description}
-              </Typography>
+                {attachments.length > 0 ? (
+                  attachments.map((file) => (
+                    <Button
+                      key={file.id || `${file.name}-${file.size}`}
+                      variant="text"
+                      size="small"
+                      sx={{
+                        justifyContent: "flex-start",
+                        textTransform: "none",
+                        color: "#1D4ED8",
+                        p: 0,
+                        minWidth: 0,
+                        fontWeight: 500,
+                        display: "inline-flex",
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenFile(file);
+                      }}
+                    >
+                      {file.name || file.fileName || "Uploaded file"}
+                    </Button>
+                  ))
+                ) : (
+                  <Typography sx={{ color: "#667085" }}>No uploaded files</Typography>
+                )}
+              </Box>
             </Box>
           </Box>
 
@@ -196,12 +225,12 @@ function SearchResultCard({ item, onPreview }) {
             fontWeight={700}
             mb={2}
           >
-            Attachments ({item.attachments.length})
+            Attachments ({attachments.length})
           </Typography>
 
           <Divider />
 
-          {(Array.isArray(item.attachments) ? item.attachments : []).map((file) => (
+          {attachments.map((file) => (
             <Box
               key={file.id || `${file.name}-${file.size}`}
               sx={{
@@ -254,7 +283,19 @@ function SearchResultCard({ item, onPreview }) {
             <MenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                const firstAttachment = Array.isArray(item.attachments) ? item.attachments[0] : null;
+                const firstAttachment = attachments[0] || null;
+                if (firstAttachment) {
+                  handleOpenFile(firstAttachment);
+                }
+              }}
+            >
+              Preview
+            </MenuItem>
+
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                const firstAttachment = attachments[0] || null;
                 if (firstAttachment) {
                   handleDownloadFile(firstAttachment);
                 }
@@ -292,7 +333,7 @@ function SearchResultCard({ item, onPreview }) {
             onClick={(e) => {
               e.stopPropagation();
 
-              (Array.isArray(item.attachments) ? item.attachments : []).forEach(async (file) => {
+              attachments.forEach(async (file) => {
                 const attachmentId = file?.attachmentId;
                 if (attachmentId) {
                   try {

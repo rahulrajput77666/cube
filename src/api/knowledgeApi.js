@@ -30,90 +30,21 @@ const buildHeaders = (extraHeaders = {}) => {
 
 const parseJsonResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
-
   if (contentType.includes("application/json")) {
     return response.json();
   }
-
   return response.text();
 };
 
-const normalizeKeywordList = (value) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  }
-
-  if (typeof value === "string") {
-    return value
-      .split(/[\s,]+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-};
-
-const extractAttachmentList = (source) => {
-  if (!source) return [];
-
-  if (Array.isArray(source)) {
-    return source.filter(
-      (item) =>
-        item &&
-        (item?.attachmentId ||
-          item?.fileId ||
-          item?.id ||
-          item?.name ||
-          item?.fileName ||
-          item?.file_name ||
-          item?.contentType ||
-          item?.mimeType ||
-          item?.fileSize ||
-          item?.file_size)
-    );
-  }
-
-  if (typeof source !== "object") return [];
-
-  const candidateKeys = ["attachments", "files", "documents", "content", "items", "records", "data"];
-  for (const key of candidateKeys) {
-    const value = source[key];
-    if (Array.isArray(value)) {
-      return extractAttachmentList(value);
-    }
-  }
-
-  if (
-    source?.attachmentId ||
-    source?.fileId ||
-    source?.id ||
-    source?.name ||
-    source?.fileName ||
-    source?.file_name ||
-    source?.contentType ||
-    source?.mimeType ||
-    source?.fileSize ||
-    source?.file_size
-  ) {
-    return [source];
-  }
-
-  return [];
-};
-
-const normalizeKnowledgePayload = (payload = {}) => {
-  const keywords = normalizeKeywordList(payload.keywords || payload.keys || payload.tags);
-
-  if (!keywords.length) {
-    throw new Error("Please add at least one key before submitting the solution.");
-  }
-
-  return {
-    title: String(payload.title || "").trim(),
-    description: String(payload.description || "").trim(),
-    keywords,
-  };
-};
+const normalizeKnowledgePayload = (payload = {}) => ({
+  title: String(payload.title || "").trim(),
+  description: String(payload.description || "").trim(),
+  keywords: Array.isArray(payload.keywords)
+    ? payload.keywords.map((item) => String(item).trim()).filter(Boolean)
+    : Array.isArray(payload.keys)
+      ? payload.keys.map((item) => String(item).trim()).filter(Boolean)
+      : [],
+});
 
 export const getKnowledgeIdFromResponse = (response) => {
   const candidate = response?.knowledge || response;
@@ -129,59 +60,32 @@ export const getKnowledgeIdFromResponse = (response) => {
 
 export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {}) => {
   const knowledge = response?.knowledge || response || {};
-  const attachmentList = extractAttachmentList(
-    response?.attachments ||
-      response?.files ||
-      response?.documents ||
-      response?.data ||
-      knowledge?.attachments ||
-      knowledge?.files ||
-      knowledge?.documents ||
-      response
-  );
+  const attachments = Array.isArray(response?.attachments)
+    ? response.attachments
+    : Array.isArray(knowledge?.attachments)
+      ? knowledge.attachments
+      : [];
 
-  const keywordList = normalizeKeywordList(
-    knowledge?.keywords ||
-      knowledge?.keys ||
-      knowledge?.tags ||
-      response?.keywords ||
-      response?.keys ||
-      response?.tags ||
-      fallback?.keywords ||
-      fallback?.keys ||
-      fallback?.tags
-  );
-
-  const normalizedAttachments = attachmentList.map((attachment, index) => ({
+  const normalizedAttachments = attachments.map((attachment, index) => ({
     id:
       attachment?.attachmentId ||
-      attachment?.fileId ||
       attachment?.id ||
       attachment?.attachment_id ||
       `${knowledge?.title || fallback.title || "attachment"}-${index + 1}`,
     attachmentId:
       attachment?.attachmentId ||
-      attachment?.fileId ||
       attachment?.id ||
       attachment?.attachment_id ||
       null,
-    name:
-      attachment?.fileName ||
-      attachment?.file_name ||
-      attachment?.name ||
-      `attachment-${index + 1}`,
-    fileName:
-      attachment?.fileName ||
-      attachment?.file_name ||
-      attachment?.name ||
-      `attachment-${index + 1}`,
-    size: attachment?.fileSize || attachment?.file_size || attachment?.size || "0 KB",
-    fileSize: attachment?.fileSize || attachment?.file_size || attachment?.size || "0 KB",
-    contentType: attachment?.contentType || attachment?.mimeType || attachment?.fileType || "application/octet-stream",
-    uploadedAt: attachment?.uploadedAt || attachment?.uploaded_at || attachment?.createdAt || null,
-    fileUrl: attachment?.fileUrl || attachment?.downloadUrl || attachment?.path || "",
-    downloadUrl: attachment?.downloadUrl || attachment?.fileUrl || attachment?.path || "",
-    previewUrl: attachment?.previewUrl || attachment?.fileUrl || attachment?.path || "",
+    name: attachment?.fileName || attachment?.name || `attachment-${index + 1}`,
+    fileName: attachment?.fileName || attachment?.name || `attachment-${index + 1}`,
+    size: attachment?.fileSize || attachment?.size || "0 KB",
+    fileSize: attachment?.fileSize || attachment?.size || "0 KB",
+    contentType: attachment?.contentType || attachment?.mimeType || "application/octet-stream",
+    uploadedAt: attachment?.uploadedAt || attachment?.uploaded_at || null,
+    fileUrl: attachment?.fileUrl || attachment?.downloadUrl || "",
+    downloadUrl: attachment?.downloadUrl || attachment?.fileUrl || "",
+    previewUrl: attachment?.previewUrl || attachment?.fileUrl || "",
   }));
 
   return {
@@ -203,13 +107,10 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
       }),
     downloads: Number(knowledge?.downloadCount || fallback.downloads || 0),
     attachments: normalizedAttachments,
-    keywords: keywordList,
-    keys: keywordList,
-    tags: keywordList,
-    chip1: keywordList[0] || "",
-    chip2: keywordList[1] || "",
-    chip3: keywordList[2] || "",
-    chip4: keywordList[3] || "",
+    chip1: (knowledge?.keywords || fallback.chip1 || [])[0] || "knowledge",
+    chip2: (knowledge?.keywords || fallback.chip2 || [])[1] || "repository",
+    chip3: (knowledge?.keywords || fallback.chip3 || [])[2] || "approved",
+    chip4: (knowledge?.keywords || fallback.chip4 || [])[3] || "document",
     source: fallback.source || "backend",
     status: String(knowledge?.status || fallback.status || "APPROVED").toUpperCase(),
   };
@@ -232,7 +133,6 @@ export const submitKnowledge = async (payload) => {
       const message =
         (typeof data === "object" && data !== null && (data.message || data.error)) ||
         `Knowledge submit failed with status ${response.status}.`;
-
       const err = new Error(message);
       err.status = response.status;
       err.responseData = data;
@@ -241,12 +141,11 @@ export const submitKnowledge = async (payload) => {
 
     return data;
   } catch (error) {
-    if (error instanceof Error && error.message.includes("Failed to fetch")) {
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
       throw new Error(
         `Backend connection failed. Please confirm the server is reachable at ${endpoint} and that the VPN/network is available.`
       );
     }
-
     throw error;
   }
 };
@@ -262,14 +161,9 @@ export const getKnowledge = async () => {
   const data = await parseJsonResponse(response);
 
   if (!response.ok) {
-    if (response.status === 403) {
-      return [];
-    }
-
     const message =
       (typeof data === "object" && data !== null && (data.message || data.error)) ||
       `Request failed with status ${response.status}.`;
-
     throw new Error(message);
   }
 
@@ -288,7 +182,6 @@ export const getKnowledgeById = async (id) => {
     const message =
       (typeof data === "object" && data !== null && (data.message || data.error)) ||
       `Request failed with status ${response.status}.`;
-
     throw new Error(message);
   }
 
@@ -296,18 +189,13 @@ export const getKnowledgeById = async (id) => {
 };
 
 export const uploadKnowledgeFiles = async (knowledgeId, files) => {
-  if (!knowledgeId) {
-    return [];
-  }
+  if (!knowledgeId) return [];
 
   const fileList = Array.isArray(files) ? files.filter(Boolean) : [];
-  if (fileList.length === 0) {
-    return [];
-  }
+  if (fileList.length === 0) return [];
 
   const endpoint = `${API_BASE_URL.replace(/\/$/, "")}/api/v1/knowledge/${knowledgeId}/attachments/batch`;
   const formData = new FormData();
-
   fileList.forEach((file) => {
     formData.append("files", file.file || file);
   });
@@ -347,7 +235,6 @@ export const downloadAttachment = async (attachmentId, fileName = "attachment") 
     const message =
       (typeof errorData === "object" && errorData !== null && (errorData.message || errorData.error)) ||
       `Attachment download failed with status ${response.status}.`;
-
     throw new Error(message);
   }
 

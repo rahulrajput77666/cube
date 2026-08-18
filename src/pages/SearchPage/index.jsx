@@ -7,7 +7,11 @@ import SearchResultHeader from "../../components/SearchResultHeader/SearchResult
 import SearchResultCard from "../../components/SearchResultCard/SearchResultCard";
 import KnowledgePreviewDrawer from "../../components/KnowledgePreviewDrawer/KnowledgePreviewDrawer";
 import { getKnowledge, mapKnowledgeApiResponseToRepositoryItem } from "../../api/knowledgeApi";
-import { loadRepositoryItems } from "../../utils/permissionStorage";
+import {
+  deletePermissionRequest,
+  deleteRepositoryItem,
+  loadRepositoryItems,
+} from "../../utils/permissionStorage";
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -156,6 +160,17 @@ function SearchPage() {
     setPage(1);
   };
 
+  const handleDeleteItem = (deletedId) => {
+    deleteRepositoryItem(deletedId);
+    deletePermissionRequest(deletedId);
+
+    setRepositoryItems((prev) => prev.filter((item) => String(item.id) !== String(deletedId)));
+    setSelectedDocument((prev) =>
+      prev && String(prev.id) === String(deletedId) ? null : prev
+    );
+    setPreviewOpen(false);
+  };
+
   const handleSearch = () => {
     setSuggestions([]);
     setPage(1);
@@ -273,9 +288,8 @@ function SearchPage() {
                 <SearchResultCard
                   key={item.id}
                   item={item}
-                  onPreview={
-                    handlePreview
-                  }
+                  onPreview={handlePreview}
+                  onDelete={handleDeleteItem}
                 />
               )
             )}

@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {Box,Tabs,Tab,Card,Typography,Chip,Stack,Button,Divider,TextField,Paper,IconButton,} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -19,9 +20,17 @@ const getSafeAttachments = (item) =>
   Array.isArray(item?.attachments) ? item.attachments : [];
 
 function GrantPermissionPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState(0);
   const [editingDescription, setEditingDescription] = useState(null);
   const [editingKeys, setEditingKeys] = useState(null);
+
+  useEffect(() => {
+    const role = (localStorage.getItem("role") || "").toUpperCase();
+    if (role !== "MANAGER" && role !== "ADMIN") {
+      navigate("/search");
+    }
+  }, [navigate]);
 
   const [requests, setRequests] = useState(() => {
     const stored = loadPermissionRequests();
@@ -81,6 +90,7 @@ function GrantPermissionPage() {
         : item
     );
 
+    savePermissionRequests(updatedRequests);
     setRequests(updatedRequests);
     addApprovedEmployeeSubmission({
       ...selected,
@@ -89,16 +99,17 @@ function GrantPermissionPage() {
   };
 
   const handleReject = (id) => {
-    setRequests((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: "REJECTED",
-            }
-          : item
-      )
+    const updated = requests.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            status: "REJECTED",
+          }
+        : item
     );
+
+    savePermissionRequests(updated);
+    setRequests(updated);
   };
 
   const filteredData = useMemo(

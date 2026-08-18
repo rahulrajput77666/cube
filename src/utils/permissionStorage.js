@@ -178,6 +178,20 @@ export const saveRepositoryItem = (item) => {
   return merged;
 };
 
+export const deleteRepositoryItem = (id) => {
+  const existing = loadUploadedSolutions() || [];
+  const next = existing.filter((item) => String(item?.id) !== String(id));
+  saveUploadedSolutions(next);
+  return next;
+};
+
+export const deletePermissionRequest = (id) => {
+  const existing = loadPermissionRequests() || [];
+  const next = existing.filter((item) => String(item?.id) !== String(id));
+  savePermissionRequests(next);
+  return next;
+};
+
 export const addApprovedEmployeeSubmission = (request) => {
   const existing = loadUploadedSolutions() || [];
   const approvedItem = buildRepositoryItem(
