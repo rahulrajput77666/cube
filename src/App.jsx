@@ -1,10 +1,11 @@
 import {BrowserRouter,Routes,Route,} from "react-router-dom";
 import SearchPage from "./pages/SearchPage";
+import BookmarksPage from "./pages/BookmarksPage";
 import UploadPage from "./pages/UploadPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import KnowledgeManagementPage from "./pages/KnowledgeManagementPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import HomePage from "./pages/HomePage";
-import GrantPermissionPage from "./pages/GrantPermissionPage";
 import AdminLayout from "./layouts/AdminLayout";
 import LoginPage from "./pages/Auth/LoginPage";
 import SignupPage from "./pages/Auth/SignupPage";
@@ -13,12 +14,16 @@ import ProjectPlanningPage from "./pages/ProjectPlanningPage";
 import IssueTrackingPage from "./pages/IssueTrackingPage";
 import ReviewPage from "./pages/ReviewPage";
 import EmployeeUploadPage from "./pages/EmployeeUploadPage";
+import RoleBasedHome from "./routes/RoleBasedHome";
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/role-home" element={<RoleBasedHome />} />
 
         <Route path="/admin" element={<AdminDashboardPage />} />
 
@@ -26,6 +31,8 @@ function App() {
           path="/search"
           element={<SearchPage />}
         />
+
+        <Route path="/bookmarks" element={<BookmarksPage />} />
 
         <Route path="/sms" element={<SmsPage />} />
         <Route path="/project-planning" element={<ProjectPlanningPage />} />
@@ -45,7 +52,7 @@ function App() {
           path="/grant-permission"
           element={
             <AdminLayout>
-              <GrantPermissionPage />
+              <KnowledgeManagementPage />
             </AdminLayout>
           }
         />

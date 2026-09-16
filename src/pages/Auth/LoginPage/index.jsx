@@ -98,7 +98,7 @@ function LoginPage() {
       localStorage.setItem("userRole", primaryRole);
       localStorage.setItem("roles", JSON.stringify(roles));
 
-      navigate("/");
+      navigate("/role-home");
     } catch (error) {
       const message =
         error?.message ||

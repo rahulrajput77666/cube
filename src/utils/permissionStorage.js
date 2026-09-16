@@ -5,6 +5,22 @@ const normalizeStatus = (value) => String(value || "").toUpperCase();
 const normalizeList = (value) =>
   Array.isArray(value) ? value.filter(Boolean) : [];
 
+const dispatchRepositoryUpdated = () => {
+  try {
+    window.dispatchEvent(new Event("repositoryUpdated"));
+  } catch (e) {
+    // ignore
+  }
+};
+
+const dispatchPermissionRequestsUpdated = () => {
+  try {
+    window.dispatchEvent(new Event("permissionRequestsUpdated"));
+  } catch (e) {
+    // ignore
+  }
+};
+
 const mergeAttachments = (existing = [], next = []) => {
   const byId = new Map();
 
@@ -115,6 +131,7 @@ export const savePermissionRequests = (requests) => {
   try {
     const normalized = normalizeList(requests).map(normalizeRequestItem);
     window.localStorage.setItem(PERMISSION_REQUESTS_KEY, JSON.stringify(normalized));
+    dispatchPermissionRequestsUpdated();
   } catch (error) {
     // ignore storage failures
   }
@@ -124,6 +141,7 @@ export const appendPermissionRequest = (request) => {
   const existing = loadPermissionRequests() || [];
   const next = [request, ...existing];
   savePermissionRequests(next);
+  dispatchPermissionRequestsUpdated();
   return next;
 };
 
@@ -148,6 +166,7 @@ export const loadUploadedSolutions = () => {
 export const saveUploadedSolutions = (solutions) => {
   try {
     window.localStorage.setItem(UPLOADED_SOLUTIONS_KEY, JSON.stringify(solutions));
+    dispatchRepositoryUpdated();
   } catch (error) {
     // ignore storage failures
   }
@@ -158,30 +177,37 @@ export const saveRepositoryItem = (item) => {
   const incoming = buildRepositoryItem(item, item?.source || "manager");
   const index = existing.findIndex((entry) => String(entry?.id) === String(incoming.id));
 
-  const merged =
+  const next =
     index >= 0
       ? existing.map((entry, idx) =>
           idx === index
             ? {
-                ...entry,
                 ...incoming,
-                attachments: mergeAttachments(entry?.attachments || [], incoming.attachments || []),
-                keys: [...new Set([...(entry?.keys || []), ...(incoming.keys || [])])],
-                keywords: [...new Set([...(entry?.keywords || []), ...(incoming.keywords || [])])],
-                tags: [...new Set([...(entry?.tags || []), ...(incoming.tags || [])])],
+                attachments: incoming.attachments || [],
+                keys: [...(incoming.keys || [])],
+                keywords: [...(incoming.keywords || [])],
+                tags: [...(incoming.tags || [])],
+                chip1: incoming.chip1 || "",
+                chip2: incoming.chip2 || "",
+                chip3: incoming.chip3 || "",
+                chip4: incoming.chip4 || "",
               }
             : entry
         )
       : [incoming, ...existing];
 
-  saveUploadedSolutions(merged);
-  return merged;
+  saveUploadedSolutions(next);
+  dispatchRepositoryUpdated();
+  return next;
 };
+
+export const updateRepositoryItem = (item) => saveRepositoryItem(item);
 
 export const deleteRepositoryItem = (id) => {
   const existing = loadUploadedSolutions() || [];
   const next = existing.filter((item) => String(item?.id) !== String(id));
   saveUploadedSolutions(next);
+  dispatchRepositoryUpdated();
   return next;
 };
 
@@ -189,6 +215,7 @@ export const deletePermissionRequest = (id) => {
   const existing = loadPermissionRequests() || [];
   const next = existing.filter((item) => String(item?.id) !== String(id));
   savePermissionRequests(next);
+  dispatchPermissionRequestsUpdated();
   return next;
 };
 
@@ -199,8 +226,22 @@ export const addApprovedEmployeeSubmission = (request) => {
     "employee_approved"
   );
 
-  const next = [approvedItem, ...existing.filter((item) => item?.id !== approvedItem?.id)];
+  const next = [approvedItem, ...existing.filter((item) => String(item?.id) !== String(approvedItem?.id))];
   saveUploadedSolutions(next);
+  dispatchRepositoryUpdated();
+  return next;
+};
+
+export const addRejectedEmployeeSubmission = (request) => {
+  const existing = loadUploadedSolutions() || [];
+  const rejectedItem = buildRepositoryItem(
+    { ...request, status: "REJECTED", source: "employee_rejected" },
+    "employee_rejected"
+  );
+
+  const next = [rejectedItem, ...existing.filter((item) => String(item?.id) !== String(rejectedItem?.id))];
+  saveUploadedSolutions(next);
+  dispatchRepositoryUpdated();
   return next;
 };
 
@@ -209,15 +250,16 @@ export const loadRepositoryItems = () => {
     buildRepositoryItem(item, item?.source || "manager")
   );
 
-  const approvalRequests = (loadPermissionRequests() || []).filter(
-    (item) => normalizeStatus(item?.status) === "APPROVED"
-  );
+  const permissionRequests = loadPermissionRequests() || [];
+  const approvedUploads = permissionRequests
+    .filter((item) => normalizeStatus(item?.status) === "APPROVED")
+    .map((item) => buildRepositoryItem({ ...item, status: "APPROVED" }, "employee_approved"));
 
-  const approvedUploads = approvalRequests.map((item) =>
-    buildRepositoryItem({ ...item, status: "APPROVED" }, "employee_approved")
-  );
+  const rejectedUploads = permissionRequests
+    .filter((item) => normalizeStatus(item?.status) === "REJECTED")
+    .map((item) => buildRepositoryItem({ ...item, status: "REJECTED" }, "employee_rejected"));
 
-  const merged = [...managerUploads, ...approvedUploads];
+  const merged = [...managerUploads, ...approvedUploads, ...rejectedUploads];
   const deduped = merged.reduce((acc, item) => {
     const existing = acc.findIndex((entry) => String(entry.id) === String(item.id));
     if (existing >= 0) {

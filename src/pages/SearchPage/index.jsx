@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {Box,Button,Typography,Pagination,} from "@mui/material";
+import {Box,Button,Typography,Pagination,Tabs,Tab,} from "@mui/material";
 import MainLayout from "../../layouts/MainLayout";
 import SearchBar from "../../components/SearchBar/SearchBar";
 import SearchResultHeader from "../../components/SearchResultHeader/SearchResultHeader";
@@ -12,6 +12,7 @@ import {
   deleteRepositoryItem,
   loadRepositoryItems,
 } from "../../utils/permissionStorage";
+import { loadBookmarks } from "../../utils/bookmarkStorage";
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ function SearchPage() {
 
   const [page, setPage] = useState(1);
   const [repositoryItems, setRepositoryItems] = useState(() => loadRepositoryItems());
+  const [tabIndex, setTabIndex] = useState(0);
+  const [bookmarks, setBookmarks] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,10 +64,42 @@ function SearchPage() {
 
     syncRepository();
 
+    const onRepositoryUpdated = () => {
+      syncRepository();
+    };
+
+    try {
+      const username = localStorage.getItem("username");
+      const bm = loadBookmarks(username);
+      setBookmarks(bm || []);
+    } catch (e) {
+      setBookmarks([]);
+    }
+
+    const onBookmarksUpdated = (e) => {
+      try {
+        const username = localStorage.getItem("username");
+        const bm = loadBookmarks(username);
+        setBookmarks(bm || []);
+      } catch (err) {
+        setBookmarks([]);
+      }
+    };
+
+    window.addEventListener("bookmarksUpdated", onBookmarksUpdated);
+    window.addEventListener("repositoryUpdated", onRepositoryUpdated);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("bookmarksUpdated", onBookmarksUpdated);
+      window.removeEventListener("repositoryUpdated", onRepositoryUpdated);
     };
   }, []);
+
+  const handleTabChange = (e, value) => {
+    setTabIndex(value);
+    setPage(1);
+  };
 
   const pageSize = 10;
 
@@ -122,18 +157,23 @@ function SearchPage() {
     setPage(1);
   };
 
-  const totalResults =
-    filteredKnowledge.length;
-
-  const totalPages = Math.ceil(
-    totalResults / pageSize
-  );
-
-  const paginatedKnowledge =
-    filteredKnowledge.slice(
-      (page - 1) * pageSize,
-      page * pageSize
+  const bookmarksToShow = bookmarks.filter((item) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(search) ||
+      item.description.toLowerCase().includes(search) ||
+      item.chip1.toLowerCase().includes(search) ||
+      item.chip2.toLowerCase().includes(search) ||
+      item.chip3.toLowerCase().includes(search) ||
+      item.chip4.toLowerCase().includes(search)
     );
+  });
+
+  const activeItems = tabIndex === 0 ? filteredKnowledge : bookmarksToShow;
+
+  const totalResults = activeItems.length;
+  const totalPages = Math.ceil(totalResults / pageSize);
+  const paginatedKnowledge = activeItems.slice((page - 1) * pageSize, page * pageSize);
 
   const handlePageChange = (
     event,
@@ -260,18 +300,19 @@ function SearchPage() {
           onSearch={handleSearch}
         />
 
+        {/* Tab selector */}
+        <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
+          <Tab label={`All (${filteredKnowledge.length})`} />
+          <Tab label={`Bookmarks (${bookmarks.length})`} />
+        </Tabs>
+
         {/* Results Header */}
 
-        <SearchResultHeader
-          count={
-            filteredKnowledge.length
-          }
-        />
+        <SearchResultHeader count={totalResults} />
 
         {/* Results */}
 
-        {filteredKnowledge.length ===
-        0 ? (
+        {totalResults === 0 ? (
           <Typography
             sx={{
               mt: 4,

@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://192.168.0.19:8080/cube";
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.0.104:8080/cube";
 
 const buildHeaders = (extraHeaders = {}) => {
   const rawAuth = localStorage.getItem("auth");
@@ -58,6 +58,9 @@ export const getKnowledgeIdFromResponse = (response) => {
   );
 };
 
+// FIX: chip1-4 now read from fallback.keywords (an array) instead of
+// fallback.chip1/chip2/etc (strings), which previously indexed individual
+// characters out of a string instead of picking keywords from an array.
 export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {}) => {
   const knowledge = response?.knowledge || response || {};
   const attachments = Array.isArray(response?.attachments)
@@ -88,31 +91,49 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
     previewUrl: attachment?.previewUrl || attachment?.fileUrl || "",
   }));
 
+  const fallbackKeywords = Array.isArray(fallback.keywords)
+    ? fallback.keywords
+    : Array.isArray(fallback.keys)
+      ? fallback.keys
+      : [];
+
+  const keywordSource = Array.isArray(knowledge?.keywords) && knowledge.keywords.length
+    ? knowledge.keywords
+    : fallbackKeywords;
+
   return {
     id: knowledge?.knowledgeId || knowledge?.id || fallback.id || `repo-${Date.now()}`,
     title: knowledge?.title || fallback.title || "Untitled knowledge",
     description: knowledge?.description || fallback.description || "",
+    // FIX: fallback.uploadedBy (explicitly passed by the caller, e.g. the
+    // logged-in username) now takes priority over the backend's createdBy.
+    // Previously createdBy won, so if it didn't exactly match
+    // localStorage username, the item became invisible in "My Uploads"
+    // (which filters strictly by uploadedBy matching username).
     uploadedBy:
-      knowledge?.createdBy ||
       fallback.uploadedBy ||
+      knowledge?.createdBy ||
       localStorage.getItem("username") ||
       "System",
     date:
-      knowledge?.createdAt ||
       fallback.date ||
+      knowledge?.createdAt ||
       new Date().toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
       }),
-    downloads: Number(knowledge?.downloadCount || fallback.downloads || 0),
+    downloads: Number(fallback.downloads ?? knowledge?.downloadCount ?? 0),
     attachments: normalizedAttachments,
-    chip1: (knowledge?.keywords || fallback.chip1 || [])[0] || "knowledge",
-    chip2: (knowledge?.keywords || fallback.chip2 || [])[1] || "repository",
-    chip3: (knowledge?.keywords || fallback.chip3 || [])[2] || "approved",
-    chip4: (knowledge?.keywords || fallback.chip4 || [])[3] || "document",
+    chip1: keywordSource[0] || "knowledge",
+    chip2: keywordSource[1] || "repository",
+    chip3: keywordSource[2] || "approved",
+    chip4: keywordSource[3] || "document",
+    keywords: keywordSource,
+    keys: keywordSource,
+    tags: keywordSource,
     source: fallback.source || "backend",
-    status: String(knowledge?.status || fallback.status || "APPROVED").toUpperCase(),
+    status: String(fallback.status || knowledge?.status || "APPROVED").toUpperCase(),
   };
 };
 
@@ -270,7 +291,37 @@ export const approveKnowledge = async (knowledgeId, payload = {}) => {
 
   return data;
 };
+export const deleteKnowledge = async (knowledgeId) => {
+  if (!knowledgeId) {
+    throw new Error("Knowledge ID is required to delete.");
+  }
 
+  const endpoint = `${API_BASE_URL.replace(/\/$/, "")}/api/v1/knowledge/${knowledgeId}`;
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers: buildHeaders(),
+  });
+
+  // Some backends return 204 No Content on successful delete — guard before parsing.
+  const contentLength = response.headers.get("content-length");
+  const data =
+    response.status === 204 || contentLength === "0"
+      ? null
+      : await parseJsonResponse(response).catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (typeof data === "object" && data !== null && (data.message || data.error)) ||
+      (response.status === 403
+        ? "You don't have permission to delete this item."
+        : `Delete failed with status ${response.status}.`);
+    const err = new Error(message);
+    err.status = response.status;
+    throw err;
+  }
+
+  return data;
+};
 export const rejectKnowledge = async (knowledgeId, payload = {}) => {
   const endpoint = `${API_BASE_URL.replace(/\/$/, "")}/api/v1/knowledge/${knowledgeId}/reject`;
   const response = await fetch(endpoint, {

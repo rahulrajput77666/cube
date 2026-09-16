@@ -137,7 +137,7 @@ function KnowledgePreviewDrawer({
     if (attachmentId) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.19:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
+          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.104:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
         );
 

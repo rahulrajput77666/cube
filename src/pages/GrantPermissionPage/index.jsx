@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {Box,Tabs,Tab,Card,Typography,Chip,Stack,Button,Divider,TextField,Paper,IconButton,} from "@mui/material";
+import {Box,Tabs,Tab,Card,Typography,Chip,Stack,Button,Divider,TextField,Paper,IconButton,Dialog,DialogTitle,DialogContent,DialogActions,} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -10,6 +10,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import mockReviewRequests from "../../mocks/mockReviewRequests";
 import {
   addApprovedEmployeeSubmission,
+  addRejectedEmployeeSubmission,
   loadPermissionRequests,
   savePermissionRequests,
 } from "../../utils/permissionStorage";
@@ -98,18 +99,55 @@ function GrantPermissionPage() {
     });
   };
 
-  const handleReject = (id) => {
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const openRejectDialog = (id) => {
+    setRejectTargetId(id);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
+
+  const closeRejectDialog = () => {
+    setRejectDialogOpen(false);
+    setRejectTargetId(null);
+    setRejectReason("");
+  };
+
+  const confirmReject = () => {
+    if (!rejectTargetId) return closeRejectDialog();
+    const reason = (rejectReason || "").trim();
+    if (!reason) {
+      // require a reason before rejecting
+      return;
+    }
+
     const updated = requests.map((item) =>
-      item.id === id
+      item.id === rejectTargetId
         ? {
             ...item,
             status: "REJECTED",
+            rejectionReason: reason,
+            reviewedOn: new Date().toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
           }
         : item
     );
 
+    const selected = updated.find((item) => item.id === rejectTargetId);
+
     savePermissionRequests(updated);
+    addRejectedEmployeeSubmission({
+      ...(selected || {}),
+      status: "REJECTED",
+      rejectionReason: reason,
+    });
     setRequests(updated);
+    closeRejectDialog();
   };
 
   const filteredData = useMemo(
@@ -389,6 +427,14 @@ function GrantPermissionPage() {
     }}
   />
 </Box>
+            {normalizeStatus(item.status) === "REJECTED" && item.rejectionReason && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                  Rejection reason
+                </Typography>
+                <Typography sx={{ color: "#EF4444" }}>{item.rejectionReason}</Typography>
+              </Box>
+            )}
             {/* Attachments */}
 
             <Typography
@@ -483,14 +529,8 @@ function GrantPermissionPage() {
                 <Button
                   variant="outlined"
                   color="error"
-                  startIcon={
-                    <CancelIcon />
-                  }
-                  onClick={() =>
-                    handleReject(
-                      item.id
-                    )
-                  }
+                  startIcon={<CancelIcon />}
+                  onClick={() => openRejectDialog(item.id)}
                 >
                   Reject
                 </Button>
@@ -514,6 +554,27 @@ function GrantPermissionPage() {
           </Card>
         ))}
       </Stack>
+      <Dialog open={rejectDialogOpen} onClose={closeRejectDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Reject submission</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1 }}>Please enter the reason for rejecting this submission.</Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter rejection reason"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeRejectDialog}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmReject}>
+            Reject
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

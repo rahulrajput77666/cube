@@ -1,10 +1,13 @@
-import {Box,Card,Typography,Chip,Button,Divider,Menu,MenuItem,} from "@mui/material";
+import {Box,Card,Typography,Chip,Button,Divider,Menu,MenuItem,IconButton,} from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DownloadIcon from "@mui/icons-material/Download";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { downloadAttachment } from "../../api/knowledgeApi";
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import { isBookmarked, toggleBookmark } from "../../utils/bookmarkStorage";
+import { downloadAttachment, deleteKnowledge } from "../../api/knowledgeApi";
 
 function SearchResultCard({ item, onPreview, onDelete }) {
   const navigate = useNavigate();
@@ -29,7 +32,7 @@ function SearchResultCard({ item, onPreview, onDelete }) {
     if (attachmentId) {
       try {
         const blob = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.19:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
+          `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.104:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
         ).then((response) => response.blob());
 
@@ -89,19 +92,57 @@ function SearchResultCard({ item, onPreview, onDelete }) {
     }
 
     localStorage.setItem("pendingModifyDocument", JSON.stringify(item));
-    navigate("/grant-permission");
+    navigate("/upload");
     handleMenuClose();
   };
 
-  const handleDelete = () => {
+  const username = localStorage.getItem("username");
+
+  const [bookmarked, setBookmarked] = useState(() => isBookmarked(item?.id, username));
+
+  const handleToggleBookmark = (e) => {
+    e.stopPropagation();
+    toggleBookmark(item, username);
+    setBookmarked(isBookmarked(item?.id, username));
+  };
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+const handleDelete = async () => {
   if (!isManager) {
-    alert("You don't have access");
+    alert("Only manager can able to delete");
     handleMenuClose();
     return;
   }
 
-  alert("Delete isn't connected to the backend yet — this will be enabled once the delete endpoint is available.");
+  if (typeof onDelete !== "function") {
+    alert("Delete isn't connected to the backend yet — this will be enabled once the delete endpoint is available.");
+    handleMenuClose();
+    return;
+  }
+
+  const confirmed = window.confirm(`Delete "${item.title}"? This can't be undone.`);
+  if (!confirmed) {
+    handleMenuClose();
+    return;
+  }
+
   handleMenuClose();
+  setIsDeleting(true);
+
+  try {
+    // Only call the backend if this item actually has a real knowledge ID
+    // (i.e. it came from the API, not a purely local/mock entry).
+    if (item?.id) {
+      await deleteKnowledge(item.id);
+    }
+    onDelete(item.id);
+  } catch (error) {
+    console.error("Delete failed:", error);
+    alert(error?.message || "Failed to delete. Please try again.");
+  } finally {
+    setIsDeleting(false);
+  }
 };
 
   return (
@@ -221,6 +262,11 @@ function SearchResultCard({ item, onPreview, onDelete }) {
             width: 340,
           }}
         >
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <IconButton onClick={handleToggleBookmark} aria-label="bookmark" size="large">
+              {bookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+            </IconButton>
+          </Box>
           <Typography
             fontWeight={700}
             mb={2}

@@ -89,7 +89,7 @@ function AdminHeader({ user }) {
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Box sx={{ width: 80, height: 80, borderRadius: 2, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/logo.png" alt="CUBE" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="CUBE" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           </Box>
 
           <Box>
@@ -114,8 +114,7 @@ function AdminHeader({ user }) {
           }}
         >
           <Button onClick={() => navigate("/admin")} sx={navButtonStyles("/admin")}>Discover & Read</Button>
-          <Button onClick={() => navigate("/grant-permission")} sx={navButtonStyles("/grant-permission")}>Grant Permission</Button>
-          <Button onClick={() => navigate("/upload")} sx={navButtonStyles("/upload")}>Upload Solution</Button>
+          <Button onClick={() => navigate("/grant-permission")} sx={navButtonStyles("/grant-permission")}>Knowledge Management</Button>
           <Button onClick={() => navigate("/users")} sx={navButtonStyles("/users")}>Users</Button>
         </Box>
 
