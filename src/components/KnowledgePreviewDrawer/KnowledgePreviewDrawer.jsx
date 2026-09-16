@@ -132,6 +132,13 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleOpenFile = async (file) => {
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.githubUrl;
+
+    if (directUrl) {
+      window.open(directUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
@@ -141,22 +148,17 @@ function KnowledgePreviewDrawer({
           { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
         );
 
-        if (response.ok) {
-          const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
-          window.open(objectUrl, "_blank", "noopener,noreferrer");
-          return;
+        if (!response.ok) {
+          throw new Error(`Attachment preview failed with status ${response.status}.`);
         }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank", "noopener,noreferrer");
+        return;
       } catch (error) {
         console.error("Preview failed:", error);
       }
-    }
-
-    const fallbackUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl;
-
-    if (fallbackUrl) {
-      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
-      return;
     }
 
     alert("This attachment is not available for preview from the backend yet.");
@@ -185,6 +187,20 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleDownloadFile = async (file) => {
+    const directUrl = file?.fileUrl || file?.downloadUrl || file?.githubUrl || file?.previewUrl;
+
+    if (directUrl) {
+      const link = document.createElement("a");
+      link.href = directUrl;
+      link.download = file.fileName || file.name || "attachment";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
@@ -194,18 +210,6 @@ function KnowledgePreviewDrawer({
       } catch (error) {
         console.error("Authenticated download failed:", error);
       }
-    }
-
-    const href = file?.fileUrl || file?.downloadUrl || "";
-
-    if (href) {
-      const link = document.createElement("a");
-      link.href = href;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
     }
 
     alert("No downloadable attachment is available for this file.");

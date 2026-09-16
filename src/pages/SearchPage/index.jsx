@@ -46,13 +46,44 @@ function SearchPage() {
         const backendItems = await getKnowledge();
         if (!isMounted) return;
 
-        const mappedItems = (Array.isArray(backendItems) ? backendItems : []).map((item) =>
-          mapKnowledgeApiResponseToRepositoryItem(item, {
-            source: "backend",
-          })
-        );
-
         const fallbackItems = loadRepositoryItems();
+        const mappedItems = (Array.isArray(backendItems) ? backendItems : []).map((item) => {
+          const mappedItem = mapKnowledgeApiResponseToRepositoryItem(item, {
+            source: "backend",
+          });
+          const localItem = fallbackItems.find((candidate) => String(candidate.id) === String(mappedItem.id));
+
+          if (!localItem) {
+            return mappedItem;
+          }
+
+          const localAttachments = Array.isArray(localItem.attachments) ? localItem.attachments : [];
+          const localById = new Map(
+            localAttachments.map((attachment) => [
+              String(attachment?.attachmentId || attachment?.id || attachment?.fileName || attachment?.name),
+              attachment,
+            ])
+          );
+          const attachments = (mappedItem.attachments || []).map((attachment) => {
+            const localAttachment = localById.get(
+              String(attachment?.attachmentId || attachment?.id || attachment?.fileName || attachment?.name)
+            );
+
+            return {
+              ...(localAttachment || {}),
+              ...attachment,
+              fileUrl: attachment.fileUrl || localAttachment?.fileUrl || "",
+              downloadUrl: attachment.downloadUrl || localAttachment?.downloadUrl || "",
+              previewUrl: attachment.previewUrl || localAttachment?.previewUrl || "",
+              githubUrl: attachment.githubUrl || localAttachment?.githubUrl || "",
+              githubPath: attachment.githubPath || localAttachment?.githubPath || "",
+              githubRepository: attachment.githubRepository || localAttachment?.githubRepository || "",
+            };
+          });
+
+          return { ...mappedItem, attachments };
+        });
+
         const mergedItems = [...mappedItems, ...fallbackItems.filter((localItem) => !mappedItems.some((apiItem) => apiItem.id === localItem.id))];
         setRepositoryItems(mergedItems);
       } catch (error) {

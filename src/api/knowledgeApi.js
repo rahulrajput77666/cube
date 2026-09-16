@@ -70,6 +70,7 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
       : [];
 
   const normalizedAttachments = attachments.map((attachment, index) => ({
+    ...attachment,
     id:
       attachment?.attachmentId ||
       attachment?.id ||
@@ -86,9 +87,43 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
     fileSize: attachment?.fileSize || attachment?.size || "0 KB",
     contentType: attachment?.contentType || attachment?.mimeType || "application/octet-stream",
     uploadedAt: attachment?.uploadedAt || attachment?.uploaded_at || null,
-    fileUrl: attachment?.fileUrl || attachment?.downloadUrl || "",
-    downloadUrl: attachment?.downloadUrl || attachment?.fileUrl || "",
-    previewUrl: attachment?.previewUrl || attachment?.fileUrl || "",
+    fileUrl:
+      attachment?.fileUrl ||
+      attachment?.downloadUrl ||
+      attachment?.githubUrl ||
+      attachment?.githubFileUrl ||
+      attachment?.rawUrl ||
+      attachment?.htmlUrl ||
+      attachment?.download_url ||
+      attachment?.contentUrl ||
+      attachment?.url ||
+      "",
+    downloadUrl:
+      attachment?.downloadUrl ||
+      attachment?.fileUrl ||
+      attachment?.githubUrl ||
+      attachment?.githubFileUrl ||
+      attachment?.rawUrl ||
+      attachment?.htmlUrl ||
+      attachment?.download_url ||
+      attachment?.contentUrl ||
+      attachment?.url ||
+      "",
+    previewUrl:
+      attachment?.previewUrl ||
+      attachment?.fileUrl ||
+      attachment?.downloadUrl ||
+      attachment?.githubUrl ||
+      attachment?.githubFileUrl ||
+      attachment?.rawUrl ||
+      attachment?.htmlUrl ||
+      attachment?.download_url ||
+      attachment?.contentUrl ||
+      attachment?.url ||
+      "",
+    githubUrl: attachment?.githubUrl || attachment?.githubFileUrl || attachment?.rawUrl || attachment?.htmlUrl || attachment?.download_url || attachment?.contentUrl || attachment?.url || "",
+    githubPath: attachment?.githubPath || attachment?.path || attachment?.filePath || "",
+    githubRepository: attachment?.githubRepository || attachment?.repository || attachment?.repo || "",
   }));
 
   const fallbackKeywords = Array.isArray(fallback.keywords)

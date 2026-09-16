@@ -27,14 +27,27 @@ function SearchResultCard({ item, onPreview, onDelete }) {
   const attachments = Array.isArray(item?.attachments) ? item.attachments : [];
 
   const handleOpenFile = async (file) => {
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.githubUrl;
+
+    if (directUrl) {
+      window.open(directUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
       try {
-        const blob = await fetch(
+        const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL || "http://192.168.0.104:8080/cube"}/api/v1/attachments/${attachmentId}/download`,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
-        ).then((response) => response.blob());
+        );
+
+        if (!response.ok) {
+          throw new Error(`Attachment preview failed with status ${response.status}.`);
+        }
+
+        const blob = await response.blob();
 
         const objectUrl = URL.createObjectURL(blob);
         window.open(objectUrl, "_blank", "noopener,noreferrer");
@@ -44,17 +57,25 @@ function SearchResultCard({ item, onPreview, onDelete }) {
       }
     }
 
-    const fallbackUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl;
-
-    if (fallbackUrl) {
-      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
     alert("This attachment is not available for preview from the backend yet.");
   };
 
   const handleDownloadFile = async (file) => {
+    const directUrl = file?.fileUrl || file?.downloadUrl || file?.githubUrl || file?.previewUrl;
+
+    if (directUrl) {
+      const link = document.createElement("a");
+      link.href = directUrl;
+      link.download = file.fileName || file.name || "attachment";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      handleMenuClose();
+      return;
+    }
+
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {
@@ -65,19 +86,6 @@ function SearchResultCard({ item, onPreview, onDelete }) {
       } catch (error) {
         console.error("Authenticated download failed:", error);
       }
-    }
-
-    const href = file?.fileUrl || file?.downloadUrl || "";
-
-    if (href) {
-      const link = document.createElement("a");
-      link.href = href;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      handleMenuClose();
-      return;
     }
 
     alert("No downloadable attachment is available for this file.");

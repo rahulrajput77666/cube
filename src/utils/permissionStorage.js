@@ -42,6 +42,13 @@ const normalizeAttachment = (file, index, fallbackTitle = "attachment") => {
   const fileUrl =
     file?.fileUrl ||
     file?.downloadUrl ||
+    file?.githubUrl ||
+    file?.githubFileUrl ||
+    file?.rawUrl ||
+    file?.htmlUrl ||
+    file?.download_url ||
+    file?.contentUrl ||
+    file?.url ||
     file?.previewUrl ||
     file?.dataUrl ||
     file?.fileDataUrl ||
@@ -59,6 +66,9 @@ const normalizeAttachment = (file, index, fallbackTitle = "attachment") => {
     fileUrl,
     previewUrl: file?.previewUrl || fileUrl,
     downloadUrl: file?.downloadUrl || fileUrl,
+    githubUrl: file?.githubUrl || file?.githubFileUrl || file?.rawUrl || file?.htmlUrl || file?.download_url || file?.contentUrl || file?.url || "",
+    githubPath: file?.githubPath || file?.path || file?.filePath || "",
+    githubRepository: file?.githubRepository || file?.repository || file?.repo || "",
   };
 };
 

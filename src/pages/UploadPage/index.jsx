@@ -263,12 +263,16 @@ function UploadPage({ reviewMode = false }) {
       const finalAttachments =
         uploadedAttachments.length > 0
           ? uploadedAttachments.map((file, index) => ({
+              ...file,
               id: file.attachmentId || file.id || `${knowledgeId}-${index}`,
               attachmentId: file.attachmentId || file.id || null,
               name: file.fileName || file.name || `attachment-${index + 1}`,
               fileName: file.fileName || file.name || `attachment-${index + 1}`,
               size: file.fileSize || file.size || "0 KB",
               fileSize: file.fileSize || file.size || "0 KB",
+              fileUrl: file.fileUrl || file.downloadUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
+              downloadUrl: file.downloadUrl || file.fileUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
+              previewUrl: file.previewUrl || file.fileUrl || file.downloadUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
             }))
           : files.map((fileEntry, index) => ({
               id: `${fileEntry.id || index}-${Date.now()}`,
