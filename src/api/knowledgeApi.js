@@ -1,6 +1,13 @@
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL || window.location.origin || "").replace(/\/$/, "");
 
+const getLocalFileUrl = async (localFileId) => {
+  if (!localFileId) return "";
+
+  const module = await import("../utils/localFileStorage");
+  return module.getLocalFileUrl(localFileId);
+};
+
 const buildHeaders = (extraHeaders = {}) => {
   const rawAuth = localStorage.getItem("auth");
   const authData = rawAuth ? JSON.parse(rawAuth) : {};
@@ -297,6 +304,9 @@ export const uploadKnowledgeFiles = async (knowledgeId, files) => {
 export const uploadAttachments = uploadKnowledgeFiles;
 
 export const getAttachmentPreviewUrl = async (attachment) => {
+  const localFileUrl = await getLocalFileUrl(attachment?.localFileId);
+  if (localFileUrl) return localFileUrl;
+
   const directUrl =
     attachment?.previewUrl ||
     attachment?.fileUrl ||
@@ -354,7 +364,9 @@ export const getAttachmentPreviewUrl = async (attachment) => {
 export const downloadAttachment = async (attachmentOrId, fileName = "attachment") => {
   const attachment =
     attachmentOrId && typeof attachmentOrId === "object" ? attachmentOrId : null;
+  const localFileUrl = await getLocalFileUrl(attachment?.localFileId);
   const directUrl =
+    localFileUrl ||
     attachment?.downloadUrl ||
     attachment?.fileUrl ||
     attachment?.previewUrl ||

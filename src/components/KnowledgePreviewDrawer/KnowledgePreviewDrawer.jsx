@@ -133,7 +133,7 @@ function KnowledgePreviewDrawer({
 
   const handleOpenFile = async (file) => {
     const attachmentId = file?.attachmentId;
-    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl;
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl || file?.localFileId;
     if (!attachmentId && !directUrl) {
       alert("This attachment is not available for preview from the backend yet.");
       return;
@@ -188,7 +188,7 @@ function KnowledgePreviewDrawer({
 
   const handleDownloadFile = async (file) => {
     const attachmentId = file?.attachmentId;
-    const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl;
+    const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl || file?.localFileId;
 
     if (attachmentId || directUrl) {
       try {

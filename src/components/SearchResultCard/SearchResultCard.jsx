@@ -39,7 +39,7 @@ function SearchResultCard({ item, onPreview, onDelete }) {
 
   const handleOpenFile = async (file) => {
     const attachmentId = file?.attachmentId;
-    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl;
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl || file?.localFileId;
     if (!attachmentId && !directUrl) {
       alert("This attachment is not available for preview from the backend yet.");
       return;
@@ -78,7 +78,7 @@ function SearchResultCard({ item, onPreview, onDelete }) {
   const handleDownloadFile = async (file) => {
     const attachmentId = file?.attachmentId;
 
-    if (attachmentId) {
+    if (attachmentId || file?.localFileId || file?.downloadUrl || file?.fileUrl || file?.previewUrl) {
       try {
         await downloadAttachment(file, file?.fileName || file?.name || item?.title || "attachment");
         handleMenuClose();
@@ -389,7 +389,7 @@ const handleDelete = async () => {
 
               attachments.forEach(async (file) => {
                 const attachmentId = file?.attachmentId;
-                const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl;
+                const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl || file?.localFileId;
                 if (attachmentId || directUrl) {
                   try {
                     await downloadAttachment(file, file?.fileName || file?.name || "attachment");

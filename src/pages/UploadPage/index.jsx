@@ -16,6 +16,7 @@ import {
   saveRepositoryItem,
   updateRepositoryItem,
 } from "../../utils/permissionStorage";
+import { saveLocalFile } from "../../utils/localFileStorage";
 
 const normalizeExistingAttachment = (file, index, fallbackTitle = "attachment") => ({
   id: file?.attachmentId || file?.id || `${fallbackTitle}-${index}`,
@@ -37,14 +38,6 @@ const isAllowedFile = (file) => {
   const extension = file.name.split(".").pop()?.toLowerCase();
   return allowedFileExtensions.includes(extension);
 };
-
-const fileToDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 
 function UploadPage({ reviewMode = false }) {
   const navigate = useNavigate();
@@ -187,14 +180,15 @@ function UploadPage({ reviewMode = false }) {
             size: file.size,
             fileSize: file.fileSize || file.size,
           })),
-          ...files.map((fileEntry, index) => ({
+          ...await Promise.all(files.map(async (fileEntry, index) => ({
             id: `${fileEntry.id || index}-${Date.now()}`,
             attachmentId: null,
+            localFileId: await saveLocalFile(fileEntry.file),
             name: fileEntry.name,
             fileName: fileEntry.name,
             size: fileEntry.size ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB` : "0 KB",
             fileSize: fileEntry.size || 0,
-          })),
+          }))),
         ];
 
         const updatedDocument = {
@@ -289,23 +283,16 @@ function UploadPage({ reviewMode = false }) {
               downloadUrl: resolveAttachmentUrl(file),
               previewUrl: resolveAttachmentUrl(file),
             }))
-          : await Promise.all(files.map(async (fileEntry, index) => {
-              const dataUrl = await fileToDataUrl(fileEntry.file);
-
-              return {
+          : await Promise.all(files.map(async (fileEntry, index) => ({
                 id: `${fileEntry.id || index}-${Date.now()}`,
                 attachmentId: null,
+                localFileId: await saveLocalFile(fileEntry.file),
                 name: fileEntry.name,
                 fileName: fileEntry.name,
                 size: fileEntry.size ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB` : "0 KB",
                 fileSize: fileEntry.size || 0,
                 contentType: fileEntry.type || "application/octet-stream",
-                dataUrl,
-                fileUrl: dataUrl,
-                downloadUrl: dataUrl,
-                previewUrl: dataUrl,
-              };
-            }));
+              })));
 
       mappedItem.attachments = finalAttachments;
       mappedItem.keywords = normalizedKeys;

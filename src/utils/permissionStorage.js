@@ -57,6 +57,7 @@ const normalizeAttachment = (file, index, fallbackTitle = "attachment") => {
   return {
     id: attachmentId ?? file?.id ?? `${name}-${index}-${Date.now()}`,
     attachmentId: attachmentId ?? null,
+    localFileId: file?.localFileId || null,
     name,
     size: fileSize,
     fileSize,
