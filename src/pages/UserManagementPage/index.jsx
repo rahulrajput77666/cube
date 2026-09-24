@@ -1,8 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import {Box,Card,CardContent,Grid,Typography,TextField,Chip,Tabs,Tab,Paper,Stack,Divider,Avatar,} from "@mui/material";
 
-import mockTeams from "../../mocks/mockTeams";
-
 function UserManagementPage() {
   const username =
     localStorage.getItem("username") ||
@@ -22,21 +20,12 @@ function UserManagementPage() {
   const [selectedEmployee, setSelectedEmployee] =
     useState(null);
 
-  const currentManager =
-    mockTeams.find(
-      (team) => team.managerName === username
-    ) || mockTeams[0];
+  const currentManager = null;
 
   const myLeads =
     currentManager?.leads || [];
 
-  const otherTeams = mockTeams.filter(
-    (team) =>
-      team.managerName !==
-        currentManager?.managerName &&
-      team.department ===
-        currentManager?.department
-  );
+  const otherTeams = [];
 
   const [selectedOtherTeam, setSelectedOtherTeam] =
     useState(otherTeams[0] || null);

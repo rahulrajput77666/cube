@@ -13,7 +13,7 @@ PURPOSE
 
 CURRENT
 - Uses frontend state
-- Suggestions generated from mockKnowledge
+- Suggestions generated from loaded repository data
 
 FUTURE BACKEND INTEGRATION
 

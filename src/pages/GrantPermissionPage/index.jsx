@@ -7,7 +7,6 @@ import DownloadIcon from "@mui/icons-material/Download";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import mockReviewRequests from "../../mocks/mockReviewRequests";
 import {
   addApprovedEmployeeSubmission,
   addRejectedEmployeeSubmission,
@@ -35,7 +34,7 @@ function GrantPermissionPage() {
 
   const [requests, setRequests] = useState(() => {
     const stored = loadPermissionRequests();
-    const base = stored && stored.length > 0 ? stored : mockReviewRequests;
+    const base = stored || [];
     return base.map((item) => ({
       ...item,
       keys: getSafeKeys(item),

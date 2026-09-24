@@ -37,7 +37,7 @@ function SignupPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    // Mock signup: navigate back to login with username prefilled
+    // Return to login with the entered username prefilled.
     navigate('/login', { state: { username: values.username } });
   };
 

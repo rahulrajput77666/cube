@@ -16,9 +16,19 @@ import ReviewPage from "./pages/ReviewPage";
 import EmployeeUploadPage from "./pages/EmployeeUploadPage";
 import RoleBasedHome from "./routes/RoleBasedHome";
 
+const routerBaseName = (() => {
+  const base = import.meta.env.BASE_URL || "/";
+
+  if (!base || base === "/" || base === "./") {
+    return "";
+  }
+
+  return base.replace(/\/$/, "");
+})();
+
 function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+    <BrowserRouter basename={routerBaseName}>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />

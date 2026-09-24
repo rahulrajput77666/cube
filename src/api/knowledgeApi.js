@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://192.168.0.104:8080/cube";
+  (import.meta.env.VITE_API_BASE_URL || window.location.origin || "").replace(/\/$/, "");
 
 const buildHeaders = (extraHeaders = {}) => {
   const rawAuth = localStorage.getItem("auth");
