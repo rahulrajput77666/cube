@@ -31,11 +31,20 @@ const normalizeExistingAttachment = (file, index, fallbackTitle = "attachment") 
 
 const allowedFileExtensions = ["pdf", "doc", "docx", "txt", "sql", "xls", "xlsx", "ppt", "pptx"];
 const allowedFileTypes = ".pdf,.doc,.docx,.txt,.sql,.xls,.xlsx,.ppt,.pptx";
+const USE_BACKEND = import.meta.env.VITE_USE_BACKEND === "true";
 
 const isAllowedFile = (file) => {
   const extension = file.name.split(".").pop()?.toLowerCase();
   return allowedFileExtensions.includes(extension);
 };
+
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 function UploadPage({ reviewMode = false }) {
   const navigate = useNavigate();
@@ -231,15 +240,20 @@ function UploadPage({ reviewMode = false }) {
         keywords: normalizedKeys,
       };
 
-      const response = await createKnowledge(payload);
+      const knowledgeId = `${Date.now()}`;
+      const response = USE_BACKEND
+        ? await createKnowledge(payload)
+        : { id: knowledgeId, ...payload };
       const knowledgeRecord = response?.knowledge || response;
-      const knowledgeId = getKnowledgeIdFromResponse(response) || `${Date.now()}`;
+      const resolvedKnowledgeId = getKnowledgeIdFromResponse(response) || knowledgeId;
 
       let uploadedAttachments = [];
-      try {
-        uploadedAttachments = await uploadKnowledgeFiles(knowledgeId, files);
-      } catch (attachmentError) {
-        console.warn("File upload skipped or failed on the backend contract:", attachmentError);
+      if (USE_BACKEND) {
+        try {
+          uploadedAttachments = await uploadKnowledgeFiles(resolvedKnowledgeId, files);
+        } catch (attachmentError) {
+          console.warn("File upload skipped or failed on the backend contract:", attachmentError);
+        }
       }
 
             const uploadDate = new Date().toLocaleDateString("en-GB", {
@@ -249,7 +263,7 @@ function UploadPage({ reviewMode = false }) {
       });
 
       const mappedItem = mapKnowledgeApiResponseToRepositoryItem(response, {
-        id: knowledgeId,
+        id: resolvedKnowledgeId,
         title: title.trim(),
         description: description.trim(),
         uploadedBy: username,
@@ -275,13 +289,22 @@ function UploadPage({ reviewMode = false }) {
               downloadUrl: resolveAttachmentUrl(file),
               previewUrl: resolveAttachmentUrl(file),
             }))
-          : files.map((fileEntry, index) => ({
-              id: `${fileEntry.id || index}-${Date.now()}`,
-              attachmentId: null,
-              name: fileEntry.name,
-              fileName: fileEntry.name,
-              size: fileEntry.size ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB` : "0 KB",
-              fileSize: fileEntry.size || 0,
+          : await Promise.all(files.map(async (fileEntry, index) => {
+              const dataUrl = await fileToDataUrl(fileEntry.file);
+
+              return {
+                id: `${fileEntry.id || index}-${Date.now()}`,
+                attachmentId: null,
+                name: fileEntry.name,
+                fileName: fileEntry.name,
+                size: fileEntry.size ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB` : "0 KB",
+                fileSize: fileEntry.size || 0,
+                contentType: fileEntry.type || "application/octet-stream",
+                dataUrl,
+                fileUrl: dataUrl,
+                downloadUrl: dataUrl,
+                previewUrl: dataUrl,
+              };
             }));
 
       mappedItem.attachments = finalAttachments;
@@ -304,7 +327,7 @@ function UploadPage({ reviewMode = false }) {
 
       if (shouldRequireApproval) {
         const request = {
-          id: `request-${knowledgeId || Date.now()}-${Math.random().toString(16).slice(2)}`,
+          id: `request-${resolvedKnowledgeId || Date.now()}-${Math.random().toString(16).slice(2)}`,
           employeeName: username,
           submittedOn: new Date().toLocaleDateString("en-GB", {
             day: "2-digit",

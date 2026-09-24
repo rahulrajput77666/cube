@@ -14,6 +14,8 @@ import {
 } from "../../utils/permissionStorage";
 import { loadBookmarks } from "../../utils/bookmarkStorage";
 
+const USE_BACKEND = import.meta.env.VITE_USE_BACKEND === "true";
+
 function SearchPage() {
   const navigate = useNavigate();
   
@@ -42,6 +44,11 @@ function SearchPage() {
     let isMounted = true;
 
     const syncRepository = async () => {
+      if (!USE_BACKEND) {
+        setRepositoryItems(loadRepositoryItems());
+        return;
+      }
+
       try {
         const backendItems = await getKnowledge();
         if (!isMounted) return;

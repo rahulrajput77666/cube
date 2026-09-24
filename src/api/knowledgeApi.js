@@ -297,6 +297,18 @@ export const uploadKnowledgeFiles = async (knowledgeId, files) => {
 export const uploadAttachments = uploadKnowledgeFiles;
 
 export const getAttachmentPreviewUrl = async (attachment) => {
+  const directUrl =
+    attachment?.previewUrl ||
+    attachment?.fileUrl ||
+    attachment?.downloadUrl ||
+    attachment?.dataUrl ||
+    attachment?.fileDataUrl ||
+    "";
+
+  if (directUrl) {
+    return directUrl;
+  }
+
   const attachmentId = attachment?.attachmentId ?? attachment?.attachment_id;
   const endpoint = attachmentId
     ? `${API_BASE_URL}/api/v1/attachments/${attachmentId}/download`
@@ -314,10 +326,55 @@ export const getAttachmentPreviewUrl = async (attachment) => {
     throw new Error(`Attachment preview failed with status ${response.status}.`);
   }
 
-  return window.URL.createObjectURL(await response.blob());
+  const sourceBlob = await response.blob();
+  const fileName = String(attachment?.fileName || attachment?.name || "").toLowerCase();
+  const responseType = response.headers.get("content-type") || "";
+  const extensionTypes = {
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".xml": "application/xml",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+  };
+  const extension = Object.keys(extensionTypes).find((type) => fileName.endsWith(type));
+  const previewType = extensionTypes[extension] || responseType || "application/octet-stream";
+  const previewBlob = new Blob([sourceBlob], { type: previewType });
+
+  return window.URL.createObjectURL(previewBlob);
 };
 
-export const downloadAttachment = async (attachmentId, fileName = "attachment") => {
+export const downloadAttachment = async (attachmentOrId, fileName = "attachment") => {
+  const attachment =
+    attachmentOrId && typeof attachmentOrId === "object" ? attachmentOrId : null;
+  const directUrl =
+    attachment?.downloadUrl ||
+    attachment?.fileUrl ||
+    attachment?.previewUrl ||
+    attachment?.dataUrl ||
+    attachment?.fileDataUrl ||
+    "";
+
+  if (directUrl) {
+    const link = document.createElement("a");
+    link.href = directUrl;
+    link.download = fileName || attachment?.fileName || attachment?.name || "attachment";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  const attachmentId = attachment?.attachmentId ?? attachment?.attachment_id ?? attachmentOrId;
   if (!attachmentId) {
     throw new Error("Attachment ID is required for authenticated download.");
   }

@@ -39,7 +39,8 @@ function SearchResultCard({ item, onPreview, onDelete }) {
 
   const handleOpenFile = async (file) => {
     const attachmentId = file?.attachmentId;
-    if (!attachmentId) {
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl;
+    if (!attachmentId && !directUrl) {
       alert("This attachment is not available for preview from the backend yet.");
       return;
     }
@@ -54,7 +55,14 @@ function SearchResultCard({ item, onPreview, onDelete }) {
     try {
       const objectUrl = await getAttachmentPreviewUrl(file);
       if (previewWindow) {
-        previewWindow.location.href = objectUrl;
+        previewWindow.document.write(`
+          <!doctype html>
+          <html><head><title>${file.fileName || file.name || "Attachment preview"}</title></head>
+          <body style="margin:0;overflow:hidden">
+            <iframe src="${objectUrl}" title="Attachment preview" style="width:100vw;height:100vh;border:0"></iframe>
+          </body></html>
+        `);
+        previewWindow.document.close();
       } else {
         window.open(objectUrl, "_blank", "noopener,noreferrer");
       }
@@ -72,7 +80,7 @@ function SearchResultCard({ item, onPreview, onDelete }) {
 
     if (attachmentId) {
       try {
-        await downloadAttachment(attachmentId, file?.fileName || file?.name || item?.title || "attachment");
+        await downloadAttachment(file, file?.fileName || file?.name || item?.title || "attachment");
         handleMenuClose();
         return;
       } catch (error) {
@@ -381,9 +389,10 @@ const handleDelete = async () => {
 
               attachments.forEach(async (file) => {
                 const attachmentId = file?.attachmentId;
-                if (attachmentId) {
+                const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl;
+                if (attachmentId || directUrl) {
                   try {
-                    await downloadAttachment(attachmentId, file?.fileName || file?.name || "attachment");
+                    await downloadAttachment(file, file?.fileName || file?.name || "attachment");
                   } catch (error) {
                     console.error("Download all failed:", error);
                   }

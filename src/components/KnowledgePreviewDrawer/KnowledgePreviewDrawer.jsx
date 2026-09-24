@@ -133,7 +133,8 @@ function KnowledgePreviewDrawer({
 
   const handleOpenFile = async (file) => {
     const attachmentId = file?.attachmentId;
-    if (!attachmentId) {
+    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.dataUrl || file?.fileDataUrl;
+    if (!attachmentId && !directUrl) {
       alert("This attachment is not available for preview from the backend yet.");
       return;
     }
@@ -143,7 +144,14 @@ function KnowledgePreviewDrawer({
     try {
       const objectUrl = await getAttachmentPreviewUrl(file);
       if (previewWindow) {
-        previewWindow.location.href = objectUrl;
+        previewWindow.document.write(`
+          <!doctype html>
+          <html><head><title>${file.fileName || file.name || "Attachment preview"}</title></head>
+          <body style="margin:0;overflow:hidden">
+            <iframe src="${objectUrl}" title="Attachment preview" style="width:100vw;height:100vh;border:0"></iframe>
+          </body></html>
+        `);
+        previewWindow.document.close();
       } else {
         window.open(objectUrl, "_blank", "noopener,noreferrer");
       }
@@ -180,10 +188,11 @@ function KnowledgePreviewDrawer({
 
   const handleDownloadFile = async (file) => {
     const attachmentId = file?.attachmentId;
+    const directUrl = file?.downloadUrl || file?.fileUrl || file?.previewUrl || file?.dataUrl || file?.fileDataUrl;
 
-    if (attachmentId) {
+    if (attachmentId || directUrl) {
       try {
-        await downloadAttachment(attachmentId, file?.fileName || file?.name || "attachment");
+        await downloadAttachment(file, file?.fileName || file?.name || "attachment");
         return;
       } catch (error) {
         console.error("Authenticated download failed:", error);

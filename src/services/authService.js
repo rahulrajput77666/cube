@@ -2,8 +2,37 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL || window.location.origin || "").replace(/\/$/, "");
 const LOGIN_ENDPOINT = import.meta.env.VITE_AUTH_LOGIN_ENDPOINT || "/api/v1/auth/login";
 const LOGOUT_ENDPOINT = import.meta.env.VITE_AUTH_LOGOUT_ENDPOINT || "/api/auth/logout";
+const USE_BACKEND = import.meta.env.VITE_USE_BACKEND === "true";
+
+const getLocalRole = (username) => {
+  const normalizedUsername = String(username || "").trim().toLowerCase();
+
+  if (normalizedUsername.includes("admin")) {
+    return "ADMIN";
+  }
+
+  if (
+    normalizedUsername.includes("manager") ||
+    normalizedUsername.startsWith("mgr")
+  ) {
+    return "MANAGER";
+  }
+
+  return "EMPLOYEE";
+};
 
 export const loginUser = async ({ username, password }) => {
+  if (!USE_BACKEND) {
+    const role = getLocalRole(username);
+
+    return {
+      username,
+      role,
+      roles: [role],
+      token: `local-${Date.now()}`,
+    };
+  }
+
   const endpoint = `${API_BASE_URL}${LOGIN_ENDPOINT}`;
 
   let response;
@@ -40,6 +69,10 @@ export const loginUser = async ({ username, password }) => {
 };
 
 export const logoutUser = async () => {
+  if (!USE_BACKEND) {
+    return true;
+  }
+
   const endpoint = `${API_BASE_URL}${LOGOUT_ENDPOINT}`;
   const token = localStorage.getItem("token");
 
