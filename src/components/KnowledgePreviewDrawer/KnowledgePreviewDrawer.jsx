@@ -3,7 +3,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { downloadAttachment } from "../../api/knowledgeApi";
+import { downloadAttachment, getAttachmentPreviewUrl } from "../../api/knowledgeApi";
 
 /*
 =========================================================
@@ -132,37 +132,25 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleOpenFile = async (file) => {
-    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.githubUrl;
-
-    if (directUrl) {
-      window.open(directUrl, "_blank", "noopener,noreferrer");
+    const attachmentId = file?.attachmentId;
+    if (!attachmentId) {
+      alert("This attachment is not available for preview from the backend yet.");
       return;
     }
 
-    const attachmentId = file?.attachmentId;
+    const previewWindow = window.open("", "_blank");
 
-    if (attachmentId) {
-      try {
-        const apiBaseUrl = (
-          import.meta.env.VITE_API_BASE_URL || window.location.origin || ""
-        ).replace(/\/$/, "");
-
-        const response = await fetch(
-          `${apiBaseUrl}/api/v1/attachments/${attachmentId}/download`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Attachment preview failed with status ${response.status}.`);
-        }
-
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
+    try {
+      const objectUrl = await getAttachmentPreviewUrl(file);
+      if (previewWindow) {
+        previewWindow.location.href = objectUrl;
+      } else {
         window.open(objectUrl, "_blank", "noopener,noreferrer");
-        return;
-      } catch (error) {
-        console.error("Preview failed:", error);
       }
+      return;
+    } catch (error) {
+      previewWindow?.close();
+      console.error("Preview failed:", error);
     }
 
     alert("This attachment is not available for preview from the backend yet.");
@@ -191,20 +179,6 @@ function KnowledgePreviewDrawer({
   ===================================================== */
 
   const handleDownloadFile = async (file) => {
-    const directUrl = file?.fileUrl || file?.downloadUrl || file?.githubUrl || file?.previewUrl;
-
-    if (directUrl) {
-      const link = document.createElement("a");
-      link.href = directUrl;
-      link.download = file.fileName || file.name || "attachment";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {

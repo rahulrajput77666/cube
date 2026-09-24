@@ -7,7 +7,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { isBookmarked, toggleBookmark } from "../../utils/bookmarkStorage";
-import { downloadAttachment, deleteKnowledge } from "../../api/knowledgeApi";
+import { downloadAttachment, deleteKnowledge, getAttachmentPreviewUrl } from "../../api/knowledgeApi";
 
 function SearchResultCard({ item, onPreview, onDelete }) {
   const navigate = useNavigate();
@@ -26,60 +26,48 @@ function SearchResultCard({ item, onPreview, onDelete }) {
 
   const attachments = Array.isArray(item?.attachments) ? item.attachments : [];
 
-  const handleOpenFile = async (file) => {
-    const directUrl = file?.previewUrl || file?.fileUrl || file?.downloadUrl || file?.githubUrl;
+  const isBrowserPreviewable = (file) => {
+    const contentType = String(file?.contentType || file?.mimeType || "").toLowerCase();
+    const fileName = String(file?.fileName || file?.name || "").toLowerCase();
+    return (
+      contentType === "application/pdf" ||
+      contentType.startsWith("image/") ||
+      contentType.startsWith("text/") ||
+      /\.(pdf|png|jpe?g|gif|webp|svg|txt|csv|json|xml|html?)$/.test(fileName)
+    );
+  };
 
-    if (directUrl) {
-      window.open(directUrl, "_blank", "noopener,noreferrer");
+  const handleOpenFile = async (file) => {
+    const attachmentId = file?.attachmentId;
+    if (!attachmentId) {
+      alert("This attachment is not available for preview from the backend yet.");
       return;
     }
 
-    const attachmentId = file?.attachmentId;
+    if (!isBrowserPreviewable(file)) {
+      await handleDownloadFile(file);
+      return;
+    }
 
-    if (attachmentId) {
-      try {
-        const apiBaseUrl = (
-          import.meta.env.VITE_API_BASE_URL || window.location.origin || ""
-        ).replace(/\/$/, "");
+    const previewWindow = window.open("", "_blank");
 
-        const response = await fetch(
-          `${apiBaseUrl}/api/v1/attachments/${attachmentId}/download`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}`, Accept: "application/octet-stream" } }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Attachment preview failed with status ${response.status}.`);
-        }
-
-        const blob = await response.blob();
-
-        const objectUrl = URL.createObjectURL(blob);
+    try {
+      const objectUrl = await getAttachmentPreviewUrl(file);
+      if (previewWindow) {
+        previewWindow.location.href = objectUrl;
+      } else {
         window.open(objectUrl, "_blank", "noopener,noreferrer");
-        return;
-      } catch (error) {
-        console.error("Preview failed:", error);
       }
+      return;
+    } catch (error) {
+      previewWindow?.close();
+      console.error("Preview failed:", error);
     }
 
     alert("This attachment is not available for preview from the backend yet.");
   };
 
   const handleDownloadFile = async (file) => {
-    const directUrl = file?.fileUrl || file?.downloadUrl || file?.githubUrl || file?.previewUrl;
-
-    if (directUrl) {
-      const link = document.createElement("a");
-      link.href = directUrl;
-      link.download = file.fileName || file.name || "attachment";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      handleMenuClose();
-      return;
-    }
-
     const attachmentId = file?.attachmentId;
 
     if (attachmentId) {

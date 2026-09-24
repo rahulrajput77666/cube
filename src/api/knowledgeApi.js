@@ -46,6 +46,46 @@ const normalizeKnowledgePayload = (payload = {}) => ({
       : [],
 });
 
+export const resolveAttachmentUrl = (attachment = {}) => {
+  const directUrl =
+    attachment.fileUrl ||
+    attachment.downloadUrl ||
+    attachment.previewUrl ||
+    attachment.githubUrl ||
+    attachment.githubFileUrl ||
+    attachment.rawUrl ||
+    attachment.htmlUrl ||
+    attachment.download_url ||
+    attachment.contentUrl ||
+    attachment.url ||
+    attachment.github?.download_url ||
+    attachment.github?.html_url ||
+    attachment.data?.download_url ||
+    attachment.data?.html_url ||
+    "";
+
+  if (directUrl) return directUrl;
+
+  const repository = attachment.githubRepository || attachment.repository || attachment.repo;
+  const path =
+    attachment.githubPath ||
+    attachment.path ||
+    attachment.filePath ||
+    attachment.githubFilePath ||
+    attachment.externalId ||
+    attachment.storagePath;
+  if (!repository || !path) return "";
+
+  const repositoryPath = String(repository)
+    .replace(/^https?:\/\/github\.com\//, "")
+    .replace(/\.git\/?$/, "")
+    .replace(/^\/+|\/+$/g, "");
+  const normalizedPath = String(path).replace(/^\/+/, "");
+  return repositoryPath.includes("/")
+    ? `https://raw.githubusercontent.com/${repositoryPath}/main/${normalizedPath}`
+    : "";
+};
+
 export const getKnowledgeIdFromResponse = (response) => {
   const candidate = response?.knowledge || response;
   return (
@@ -69,17 +109,20 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
       ? knowledge.attachments
       : [];
 
-  const normalizedAttachments = attachments.map((attachment, index) => ({
-    ...attachment,
-    id:
+  const normalizedAttachments = attachments.map((attachment, index) => {
+    // Temporary diagnostics: verify the backend's attachment ID field.
+    console.log("Raw attachment from backend:", attachment);
+
+    return {
+      ...attachment,
+      id:
       attachment?.attachmentId ||
-      attachment?.id ||
       attachment?.attachment_id ||
+      attachment?.id ||
       `${knowledge?.title || fallback.title || "attachment"}-${index + 1}`,
-    attachmentId:
-      attachment?.attachmentId ||
-      attachment?.id ||
-      attachment?.attachment_id ||
+      attachmentId:
+      attachment?.attachmentId ??
+      attachment?.attachment_id ??
       null,
     name: attachment?.fileName || attachment?.name || `attachment-${index + 1}`,
     fileName: attachment?.fileName || attachment?.name || `attachment-${index + 1}`,
@@ -87,44 +130,21 @@ export const mapKnowledgeApiResponseToRepositoryItem = (response, fallback = {})
     fileSize: attachment?.fileSize || attachment?.size || "0 KB",
     contentType: attachment?.contentType || attachment?.mimeType || "application/octet-stream",
     uploadedAt: attachment?.uploadedAt || attachment?.uploaded_at || null,
-    fileUrl:
-      attachment?.fileUrl ||
-      attachment?.downloadUrl ||
-      attachment?.githubUrl ||
-      attachment?.githubFileUrl ||
-      attachment?.rawUrl ||
-      attachment?.htmlUrl ||
-      attachment?.download_url ||
-      attachment?.contentUrl ||
-      attachment?.url ||
-      "",
-    downloadUrl:
-      attachment?.downloadUrl ||
-      attachment?.fileUrl ||
-      attachment?.githubUrl ||
-      attachment?.githubFileUrl ||
-      attachment?.rawUrl ||
-      attachment?.htmlUrl ||
-      attachment?.download_url ||
-      attachment?.contentUrl ||
-      attachment?.url ||
-      "",
-    previewUrl:
-      attachment?.previewUrl ||
-      attachment?.fileUrl ||
-      attachment?.downloadUrl ||
-      attachment?.githubUrl ||
-      attachment?.githubFileUrl ||
-      attachment?.rawUrl ||
-      attachment?.htmlUrl ||
-      attachment?.download_url ||
-      attachment?.contentUrl ||
-      attachment?.url ||
-      "",
+    fileUrl: resolveAttachmentUrl(attachment),
+    downloadUrl: resolveAttachmentUrl(attachment),
+    previewUrl: resolveAttachmentUrl(attachment),
     githubUrl: attachment?.githubUrl || attachment?.githubFileUrl || attachment?.rawUrl || attachment?.htmlUrl || attachment?.download_url || attachment?.contentUrl || attachment?.url || "",
-    githubPath: attachment?.githubPath || attachment?.path || attachment?.filePath || "",
-    githubRepository: attachment?.githubRepository || attachment?.repository || attachment?.repo || "",
-  }));
+    githubPath:
+      attachment?.githubPath ||
+      attachment?.path ||
+      attachment?.filePath ||
+      attachment?.githubFilePath ||
+      attachment?.externalId ||
+      attachment?.storagePath ||
+      "",
+      githubRepository: attachment?.githubRepository || attachment?.repository || attachment?.repo || "",
+    };
+  });
 
   const fallbackKeywords = Array.isArray(fallback.keywords)
     ? fallback.keywords
@@ -275,6 +295,27 @@ export const uploadKnowledgeFiles = async (knowledgeId, files) => {
 };
 
 export const uploadAttachments = uploadKnowledgeFiles;
+
+export const getAttachmentPreviewUrl = async (attachment) => {
+  const attachmentId = attachment?.attachmentId ?? attachment?.attachment_id;
+  const endpoint = attachmentId
+    ? `${API_BASE_URL}/api/v1/attachments/${attachmentId}/download`
+    : "";
+
+  if (!endpoint) {
+    throw new Error("Attachment preview URL is unavailable.");
+  }
+
+  const response = await fetch(endpoint, {
+    headers: buildHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Attachment preview failed with status ${response.status}.`);
+  }
+
+  return window.URL.createObjectURL(await response.blob());
+};
 
 export const downloadAttachment = async (attachmentId, fileName = "attachment") => {
   if (!attachmentId) {

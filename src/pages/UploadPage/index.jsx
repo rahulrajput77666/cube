@@ -8,6 +8,7 @@ import {
   createKnowledge,
   getKnowledgeIdFromResponse,
   mapKnowledgeApiResponseToRepositoryItem,
+  resolveAttachmentUrl,
   uploadKnowledgeFiles,
 } from "../../api/knowledgeApi";
 import {
@@ -264,15 +265,15 @@ function UploadPage({ reviewMode = false }) {
         uploadedAttachments.length > 0
           ? uploadedAttachments.map((file, index) => ({
               ...file,
-              id: file.attachmentId || file.id || `${knowledgeId}-${index}`,
-              attachmentId: file.attachmentId || file.id || null,
+              id: file.attachmentId || file.attachment_id || file.id || `${knowledgeId}-${index}`,
+              attachmentId: file.attachmentId ?? file.attachment_id ?? null,
               name: file.fileName || file.name || `attachment-${index + 1}`,
               fileName: file.fileName || file.name || `attachment-${index + 1}`,
               size: file.fileSize || file.size || "0 KB",
               fileSize: file.fileSize || file.size || "0 KB",
-              fileUrl: file.fileUrl || file.downloadUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
-              downloadUrl: file.downloadUrl || file.fileUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
-              previewUrl: file.previewUrl || file.fileUrl || file.downloadUrl || file.githubUrl || file.githubFileUrl || file.rawUrl || file.htmlUrl || file.download_url || file.contentUrl || file.url || "",
+              fileUrl: resolveAttachmentUrl(file),
+              downloadUrl: resolveAttachmentUrl(file),
+              previewUrl: resolveAttachmentUrl(file),
             }))
           : files.map((fileEntry, index) => ({
               id: `${fileEntry.id || index}-${Date.now()}`,
