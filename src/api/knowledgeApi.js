@@ -1,5 +1,6 @@
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL || window.location.origin || "").replace(/\/$/, "");
+const USE_BACKEND = import.meta.env.VITE_USE_BACKEND === "true";
 
 const getLocalFileUrl = async (localFileId) => {
   if (!localFileId) return "";
@@ -304,9 +305,6 @@ export const uploadKnowledgeFiles = async (knowledgeId, files) => {
 export const uploadAttachments = uploadKnowledgeFiles;
 
 export const getAttachmentPreviewUrl = async (attachment) => {
-  const localFileUrl = await getLocalFileUrl(attachment?.localFileId);
-  if (localFileUrl) return localFileUrl;
-
   const directUrl =
     attachment?.previewUrl ||
     attachment?.fileUrl ||
@@ -328,9 +326,7 @@ export const getAttachmentPreviewUrl = async (attachment) => {
     throw new Error("Attachment preview URL is unavailable.");
   }
 
-  const response = await fetch(endpoint, {
-    headers: buildHeaders(),
-  });
+  const response = await fetch(endpoint, { headers: buildHeaders() });
 
   if (!response.ok) {
     throw new Error(`Attachment preview failed with status ${response.status}.`);
@@ -364,7 +360,9 @@ export const getAttachmentPreviewUrl = async (attachment) => {
 export const downloadAttachment = async (attachmentOrId, fileName = "attachment") => {
   const attachment =
     attachmentOrId && typeof attachmentOrId === "object" ? attachmentOrId : null;
-  const localFileUrl = await getLocalFileUrl(attachment?.localFileId);
+  const localFileUrl = !USE_BACKEND && attachment?.localFileId
+    ? await getLocalFileUrl(attachment.localFileId)
+    : "";
   const directUrl =
     localFileUrl ||
     attachment?.downloadUrl ||
@@ -397,6 +395,15 @@ export const downloadAttachment = async (attachmentOrId, fileName = "attachment"
   });
 
   if (!response.ok) {
+    if (localFileUrl) {
+      const link = document.createElement("a");
+      link.href = localFileUrl;
+      link.download = fileName || attachment?.fileName || attachment?.name || "attachment";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
     const errorData = await parseJsonResponse(response).catch(() => null);
     const message =
       (typeof errorData === "object" && errorData !== null && (errorData.message || errorData.error)) ||

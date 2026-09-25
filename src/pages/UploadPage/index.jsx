@@ -240,6 +240,9 @@ function UploadPage({ reviewMode = false }) {
         : { id: knowledgeId, ...payload };
       const knowledgeRecord = response?.knowledge || response;
       const resolvedKnowledgeId = getKnowledgeIdFromResponse(response) || knowledgeId;
+      const localFileIds = USE_BACKEND
+        ? []
+        : await Promise.all(files.map((fileEntry) => saveLocalFile(fileEntry.file)));
 
       let uploadedAttachments = [];
       if (USE_BACKEND) {
@@ -275,6 +278,7 @@ function UploadPage({ reviewMode = false }) {
               ...file,
               id: file.attachmentId || file.attachment_id || file.id || `${knowledgeId}-${index}`,
               attachmentId: file.attachmentId ?? file.attachment_id ?? null,
+              localFileId: localFileIds[index] || null,
               name: file.fileName || file.name || `attachment-${index + 1}`,
               fileName: file.fileName || file.name || `attachment-${index + 1}`,
               size: file.fileSize || file.size || "0 KB",
@@ -286,7 +290,7 @@ function UploadPage({ reviewMode = false }) {
           : await Promise.all(files.map(async (fileEntry, index) => ({
                 id: `${fileEntry.id || index}-${Date.now()}`,
                 attachmentId: null,
-                localFileId: await saveLocalFile(fileEntry.file),
+                localFileId: localFileIds[index] || null,
                 name: fileEntry.name,
                 fileName: fileEntry.name,
                 size: fileEntry.size ? `${Math.max(1, Math.round(fileEntry.size / 1024))} KB` : "0 KB",
